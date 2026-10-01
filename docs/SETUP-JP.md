@@ -12,9 +12,9 @@ GTX 10 シリーズ（Pascal）で実際にインストール・起動・LAN 公
 | ドライバ | 550.107.02 |
 | CUDA Toolkit | 12.6（`/usr/local/cuda-12.6`、nvcc 12.6.68） |
 | メモリ | 62 GB |
-| ディスク | /home に 1.8 TB（IQ3_XXS 一式で約 79 GB。IQ2_XS を足すと 118 GB） |
+| ディスク | /home に 1.8 TB（IQ3_XXS 一式で約 79 GB。IQ2_XS を足すと 118 GB、Q2_0 を足すと約 180 GB） |
 | Strata engine | 0.1.31、ローカルビルド（`archs: [61]`、`sm60: true`、`vision: "cpu"`） |
-| モデル | Qwen3.8-Flash-Next / IQ2_XS（当初は IQ3_XXS）、context 32768、vision cpu |
+| モデル | Qwen3.8-Flash-Next / **Q2_0**（IQ3_XXS → IQ2_XS → Q2_0 と載せ替えた）、context 32768、vision cpu |
 
 ## 2. 前提条件
 
@@ -55,9 +55,10 @@ git clone <このリポジトリ> && cd Strata
 ./setup.sh --experimental-sm60 --model IQ3_XXS --context 32768 --yes
 ```
 
-> このマシンで最終的に使っているのは **IQ2_XS** の方（`--model IQ2_XS --kv int8 --vision cpu`）。
-> GTX 10 級で VRAM が 11 GB しかない PC では、expert の常駐数が速度を決めるため、2-bit の方が有利だった。
-> 比較の実測は 9.3 節。
+> このマシンで最終的に使っているのは **Q2_0** の方（`--model Q2_0 --kv int8 --vision cpu`）。
+> GTX 10 級で VRAM が 11 GB しかない PC では expert の常駐数が速度を決めるが、それを越えたところで
+> **CPU 側の 1 行あたりの復号コスト**が効いてくる。i-quant でない 2-bit（Q2_0）が最速だった。
+> IQ3_XXS → IQ2_XS → Q2_0 の比較実測は 9.3 節と 9.6 節。
 
 `setup.sh` は Python 3.10+（venv と pip が使えるもの）が無ければ apt/dnf で入れるだけの薄いラッパ（sudo を聞く
 ことがある）。Windows は `START-HERE.bat` が同じ `setup.py` を呼ぶ。
@@ -93,16 +94,19 @@ Workspace/
 │   ├── engine/strata-vision    # 画像エンコーダ（vision を有効にしたとき増える）
 │   ├── engine/BUILD.json       # どの構成でビルドしたかの記録
 │   ├── build/CMakeCache.txt    # STRATA_EXPERIMENTAL_SM60:BOOL=ON が入る
-│   ├── strata-iq2_xs.json      # 起動設定（gitignore 済み）
-│   ├── run-iq2_xs.sh           # 起動スクリプト（gitignore 済み）
-│   ├── strata-iq2_xs.log       # エンジンのログ（毎リクエストの tok/s、cache hit rate が出る）
+│   ├── strata-q2_0.json        # 起動設定（いま動いているもの。gitignore 済み）
+│   ├── run-q2_0.sh             # 起動スクリプト（gitignore 済み）
+│   ├── strata-q2_0.log         # エンジンのログ（毎リクエストの tok/s、cache hit rate が出る）
+│   ├── strata-iq2_xs.json / run-iq2_xs.sh / strata-iq2_xs.log   # 途中まで使っていた IQ2_XS
 │   └── strata-iq3_xxs.json / run-iq3_xxs.sh / strata-iq3_xxs.log   # 先に入れておいた IQ3_XXS
-└── Strata-data/                # モデル本体（IQ3_XXS + IQ2_XS で 118 GB）
+└── Strata-data/                # モデル本体（IQ3_XXS + IQ2_XS + Q2_0 で約 180 GB）
     ├── models/IQ3_XXS/         # 71 GB  GGUF の 2 分割シャード（44 GB + 27 GB）
     ├── models/IQ2_XS/          # 39 GB + 29 GB（shard 2 は IQ3_XXS とハードリンク共有）
+    ├── models/Q2_0/            # 37 GB + 29 GB（shard 2 も同じハードリンク共有）
     ├── models/mmproj-*.gguf    # 0.91 GB  画像エンコーダ（vision）
     ├── packs/iq3_xxs/          # 1.5 GB pack（dense 重み・expert の索引・トークナイザ）
     ├── packs/iq2_xs/           # 同上（IQ2_XS 用）
+    ├── packs/q2_0/             # 同上（Q2_0 用）
     └── mtp/                    # 6.5 GB MTP ドラフト層（サイズ間で共有、再ダウンロードなし）
 ```
 
@@ -122,14 +126,15 @@ Workspace/
 ```
 
 **`"sm60": true` が重要**：これがあるおかげで、2 回目以降は `--experimental-sm60` を付けなくても
-（`./setup.sh` だけでも、`run-iq2_xs.sh` だけでも）同じビルドとして認識され、GPU チェックを通過する。
+（`./setup.sh` だけでも、`run-q2_0.sh` だけでも）同じビルドとして認識され、GPU チェックを通過する。
 
 ## 5. 起動・停止
 
 ```bash
-./run-iq2_xs.sh           # 起動（約 36 GB の expert を RAM に読む）
+./run-q2_0.sh             # 起動（約 34 GB の expert を RAM に読む）
+./run-iq2_xs.sh           # 前に使っていた IQ2_XS 版（約 36 GB）
 ./run-iq3_xxs.sh          # 先に入れておいた IQ3_XXS 版（約 47 GB）
-./setup.sh                # どちらかを選ぶ一覧が出る（既定は最後に作った方）
+./setup.sh                # どれを起動するかの一覧が出る（既定は最後に作った方）
 ```
 
 - 初回ロードは **1〜3 分**固まる。ログに
@@ -148,7 +153,7 @@ Workspace/
 - 停止は端末を閉じるか `Ctrl+C`。裏で動かすなら:
 
   ```bash
-  nohup ./run-iq2_xs.sh > /tmp/strata-server.log 2>&1 &
+  nohup ./run-q2_0.sh > /tmp/strata-server.log 2>&1 &
   pgrep -af 'serve/server.py|engine/strata'      # 確認
   kill <PID>                                     # 停止（エンジン子プロセスも一緒に終わる）
   ```
@@ -157,7 +162,7 @@ Workspace/
 
 ## 6. LAN 越しにアクセスする（他の PC から使う）
 
-コードの変更は不要。設定ファイル `strata-iq2_xs.json` に 2 つ足すだけ
+コードの変更は不要。設定ファイル `strata-q2_0.json` に 2 つ足すだけ
 （`setup.py --host 0.0.0.0 --api-key <鍵>` でも同じ）:
 
 ```json
@@ -212,18 +217,18 @@ c = OpenAI(base_url="http://192.168.75.24:8080/v1", api_key="<鍵>")
 ベンチマークではなく、このマシンで体感した範囲のメモ。同じ 6562 token の文脈を 2 回投げて、
 1 回目（プロンプトを一から読む）と 2 回目（前回の文脈を再利用）を分けてある。
 
-| 場面 | IQ3_XXS | IQ2_XS | IQ2_XS + 調整後 |
-|---|---|---|---|
-| VRAM に常駐する expert | 2794 / 24576 | **3815** / 24576 | 3815 / 24576 |
-| expert cache ヒット率（コールド → 暖まった後） | 57.6% → 69.4% | 62.5% → 71.7% | 67〜72% → 77〜80% |
-| プロンプト処理（6562 token、一から） | 199〜212 tok/s | 199 tok/s | 200（再起直後）/ 313（温まった後） |
-| 出力（6562 token の文脈で 128 token、コールド） | 6.0〜6.5 tok/s | 5.9 tok/s | 6.6（再起直後）/ 12.5（温まった後） |
-| 出力（同じ 6562 token の文脈を再利用） | 7.5 / 19.7 tok/s | 8.4 tok/s | 7.4 → 10.1 / 10.4 tok/s |
-| 出力（短い回答） | 10 tok/s 前後 | 7 tok/s 前後 | 7.6 tok/s（再起直後） |
-| 出力（直前の会話を再利用した短いプロンプト） | 17〜22 tok/s | 21.5〜22.5 tok/s | 15.1 / 21.1 / 27.2 tok/s |
+| 場面 | IQ3_XXS | IQ2_XS | IQ2_XS + 調整後 | **Q2_0 + 調整後** |
+|---|---|---|---|---|
+| VRAM に常駐する expert | 2794 / 24576 | 3815 / 24576 | 3815 / 24576 | **3933** / 24576 |
+| expert cache ヒット率（コールド → 暖まった後） | 57.6% → 69.4% | 62.5% → 71.7% | 67〜72% → 77〜80% | 71% → **78〜83%** |
+| プロンプト処理（6562 token、一から） | 199〜212 tok/s | 199 tok/s | 200 / 313 tok/s | 205 / **320** tok/s |
+| 出力（6562 token の文脈で 128 token、コールド） | 6.0〜6.5 tok/s | 5.9 tok/s | 6.6 / 12.5 tok/s | 7.9 / **17.1** tok/s |
+| 出力（同じ 6562 token の文脈を再利用） | 7.5 / 19.7 tok/s | 8.4 tok/s | 7.4 → 10.1 / 10.4 | 13.8 → **30.2** tok/s |
+| 出力（短い回答） | 10 tok/s 前後 | 7 tok/s 前後 | 7.6 tok/s | 8.2 tok/s |
+| 出力（直前の会話を再利用した短いプロンプト） | 17〜22 tok/s | 21.5〜22.5 tok/s | 15.1 / 21.1 / 27.2 | 16.5 / **29.4** tok/s |
 
-「調整後」は `./setup.sh --calibrate` が選んだ `--pcie-frac 0.35 --spec-min-p 0.70` を効かせたもので、
-9.5 節に測り直した表を載せる。
+「調整後」は `./setup.sh --calibrate` が選んだ `--pcie-frac 0.35 --spec-min-p 0.70` を効かせたもの。
+いま動いているのは **Q2_0** で、載せ替えた理由と品質の落ち方は 9.6 節、IQ2_XS までの経緯は 9.3〜9.5 節。
 
 **ばらつきが大きい**点に注意。同じ条件の再実行で 7.5 と 19.7 tok/s が出ている。効いているのは
 （a）その文脈が実際にどの expert を引くか（ヒット率）、（b）MTP ドラフトの採用率
@@ -256,7 +261,7 @@ c = OpenAI(base_url="http://192.168.75.24:8080/v1", api_key="<鍵>")
 送ってきてもエンコードは 1 回）。
 
 ```bash
-./setup.sh --setup --model IQ2_XS --context 32768 --kv int8 --vision cpu \
+./setup.sh --setup --model Q2_0 --context 32768 --kv int8 --vision cpu \
   --host 0.0.0.0 --api-key <key> --port 8080 --gpu 0 --yes
 ```
 
@@ -277,14 +282,15 @@ c = OpenAI(base_url="http://192.168.75.24:8080/v1", api_key="<鍵>")
 - 有効かの確認: `/v1/models` の `architecture` に `input_modalities` が入る（vision 無しのときは `["text"]`）:
 
   ```json
-  {"id": "qwen3.8-flash-next-iq2_xs", "status": {"value": "loaded"},
+  {"id": "qwen3.8-flash-next-q2_0", "status": {"value": "loaded"},
    "meta": {"n_ctx": 32768},
    "architecture": {"input_modalities": ["text", "image"], "output_modalities": ["text"]}}
   ```
 
 ### 8.1 実際に画像を送った結果
 
-640x360 の PNG（赤い円・青い四角・黒文字）を OpenAI 形式の `image_url`（base64 data URL）で送った:
+640x360 の PNG（赤い円・青い四角・黒文字）を OpenAI 形式の `image_url`（base64 data URL）で送った
+（この測定は IQ2_XS のときのもの。Q2_0 では 9.6 節の速度になる）:
 
 | 回 | 内容 | 実測 |
 |---|---|---|
@@ -452,6 +458,62 @@ expert キャッシュが空なので常に遅い（6.6 tok/s）。同じ条件�
 `--prompt-cache`（既定 6 会話）と `--conversation-cache-mib`（既定 0）は、この「温まり方」を
 リクエスト間に保つための設定。
 
+
+### 9.6 50 tok/s を目指して Q2_0 に載せ替えた
+
+「もっと速く（50 tok/s ）」という話で、まずこのマシンで 50 が出るのかを詰めた:
+
+- 生成 1 token ごとに、MoE 48 層 × 10 = **480 個の expert** を評価する。
+- 11 GB のカードで expert に割り当てられる VRAM は 5.1 GiB。IQ2_XS の blob は 1.41 MB なので
+  **3815 個（全 24576 の 15.5%）**しか常駐できない。ヒット率 62〜80% は、つまり
+  **1 token につき 96〜180 個を CPU + RAM 側で計算している**ということ。
+- プロジェクト自身の推算（[docs/DETAILS.md](DETAILS.md)）では RTX 3090 24 GB で IQ2_XS 約 103〜131 tok/s、
+  RTX 5060 Ti 16 GB で約 51〜77。「VRAM の追加は GPU 自体より効く。1 GB ごとに expert が約 700 個増え、
+  GPU 上の expert 1 個は CPU が計算しなくていい 1 個」。
+- **増設はできない**: multi-GPU（layer split）は compute capability 7.5 以上が必要で、GTX 10 系は setup に弾かれる
+  （[docs/MULTI_GPU.md](MULTI_GPU.md)）。1080 Ti をもう 1 枚積んでも意味がない。
+
+そこで無料の範囲で一番効くはずの **Q2_0**（i-quant ではない 2-bit。legacy quant なので CPU 側の復号が軽い）に入れた:
+
+```
+./setup.sh --setup --family qwen --model Q2_0 --context 32768 --kv int8 --vision cpu \
+           --host 0.0.0.0 --api-key <鍵> --no-start --yes
+```
+
+- shard1 の 37.6 GB だけダウンロード（shard2 の 28.8 GB は IQ2_XS と同一ファイルなのでハードリンクで共有）。
+  実測 約 13 分。`run-q2_0.sh` / `strata-q2_0.json` ができる。9.4 で決めた
+  `--pcie-frac 0.35 --spec-min-p 0.70` は setup が知らない値なので手で足した。
+- blob が 1.31 MB に減り、常駐 expert は **3815 → 3933**。ヒット率は 71% → 78〜83%。
+
+同じベンチマーク、同じエンジン設定での比較:
+
+| 場面 | IQ2_XS | Q2_0 |
+|---|---|---|
+| 出力（長い文脈、コールド） | 6.6 / 12.5 tok/s | **7.9 / 17.1** tok/s |
+| 出力（同じ文脈を再利用） | 10.1 / 10.4 tok/s | **13.8 / 30.2** tok/s |
+| 出力（短いプロンプト、文脈は再利用） | 15.1 / 21.1 / 27.2 | **16.5 / 29.4** |
+| プロンプト 6562 token を一から | 200 / 313 tok/s | 205 / **320** tok/s |
+
+**常駐 expert は 3% 増えただけなのに出力が 1.5〜3 倍**。差はほぼ全部「CPU 側で 1 行を復号するコスト」で、
+i-quant（IQ2_XS）のコードブック復号がこの CPU（4 スレッド・AVX2 のみ、AVX-512 なし）で重かったということ。
+
+品質は落ちる。このマシンで確認した範囲:
+
+- `17 x 23 = ?` → 391（正しい）
+- `fib(n)` をループで、というコード課題 → 正しい実装
+- 日本語の要約 → 内容は正しいが「常驻」（簡体字混じりの表記）が出た。IQ3_XXS では出なかった
+
+**50 tok/s には届かない**（現状 17〜30）。壁は VRAM のままなので、この PC でさらに狙うなら:
+
+1. **自分のプロンプトで expert profile を作る**。エンジンを `--dump-routing trace.bin` で一度走らせ、
+   `tools/make_profile.py` で ranking を作り、config の `--expert-profile` を差し替える。
+   3933 枠に「自分の作業が実際に引く expert」を入れられ、CPU 側の miss そのものが減る。
+2. `--conversation-cache-mib`（既定 0 = off）と `--prompt-cache-every`（既定 16384）で、
+   長い文脈の読み直しを減らす（checkpoint 1 個あたり約 118 MB の RAM）。
+3. GPU を RTX 20 系以降（16〜24 GB）に載せ替える。50 を超える唯一の経路。
+
+なお `--experimental-speed-projection` は名前に反して**速度機能ではない**（拒否方向の制御ベクトルで、
+むしろ 0.2〜0.4%/token 遅く、安全性の挙動を変える）。速度目的では入れないこと。
 
 ## 10. 設定を変えたいとき
 
