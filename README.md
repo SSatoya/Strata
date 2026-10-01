@@ -106,7 +106,8 @@ toolkit - CUDA 13 dropped those cards - instead of downloading the ready-made on
 paths. Upstream does not support these cards, and prompts are much slower than on an RTX 20 or newer; setup says so
 each time it builds one. Measured on a GTX 1080 Ti with the model this repo sets up: about 125 tok/s of prompt where a
 current card does 400+ - the output side is mostly the experts streaming through system RAM, so it depends on your CPU
-as much as on the card.
+as much as on the card. A step-by-step walkthrough of that install in Japanese, with the measured numbers and how to
+reach the server from other devices, is in [docs/SETUP-JP.md](docs/SETUP-JP.md).
 
 **Windows**
 
