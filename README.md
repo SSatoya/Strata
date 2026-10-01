@@ -100,6 +100,14 @@ a big GPU makes up for less RAM - the [low-RAM mode](docs/DETAILS.md)),
 install yourself is a current **NVIDIA driver** ([nvidia.com/drivers](https://www.nvidia.com/drivers) or the NVIDIA
 App). Everything else - Python, the engine, the model - is set up for you.
 
+**A GTX 10 or a Volta card?** Run `./setup.sh --experimental-sm60` (Windows: `START-HERE.bat --experimental-sm60`, or
+`set STRATA_EXPERIMENTAL_SM60=1`). That is the community build for #236: it compiles the engine here with a CUDA 12.x
+toolkit - CUDA 13 dropped those cards - instead of downloading the ready-made one, and its kernels take the pre-Turing
+paths. Upstream does not support these cards, and prompts are much slower than on an RTX 20 or newer; setup says so
+each time it builds one. Measured on a GTX 1080 Ti with the model this repo sets up: about 125 tok/s of prompt where a
+current card does 400+ - the output side is mostly the experts streaming through system RAM, so it depends on your CPU
+as much as on the card.
+
 **Windows**
 
 1. [Download this project](https://github.com/Niko1221/Strata/archive/refs/heads/main.zip) and unzip it (or `git clone` it).
