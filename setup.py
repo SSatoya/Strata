@@ -1832,6 +1832,18 @@ def refresh_draft_vocab(rt: Path, choice: str = "cjk") -> None:
     shutil.copyfile(new, dst)
 
 
+def mtp_is_corrupt(mtp: Path) -> bool:
+    """True when the fetched MTP tensors are not the ones `tools/mtp_fetch.py` recorded: the install from a mirror
+    or proxy that ignores the HTTP Range header, where most of the 31 tensors are their shard's own header instead
+    of weights (issue #327 - the drafter runs, decodes, and accepts nothing).  `verify` only reads the disk, so this
+    costs a pass over the ~5 GB already there, on the setup path only.  An install with no manifest was fetched
+    before the check existed and is left as it is: `fetch` re-reads what it finds wrong there too."""
+    if not (mtp / "mtp-manifest.json").exists():
+        return False
+    return run([sys.executable, str(ROOT / "tools" / "mtp_fetch.py"), "verify", "--out", str(mtp)],
+               check=False, quiet=True).returncode != 0
+
+
 def ensure_engine_for(cards, cfg_path: Path, cfg: dict, yes: bool) -> dict:
     """The installed engine must have code for every card the model starts on: a card added later (--gpus with an
     older or newer generation, #128) or a new GPU in the PC otherwise stops the start with 'no kernel image'.  Such a
@@ -2381,7 +2393,11 @@ def main() -> int:
     ok(f"model prepared: {pack}")
     mtp = (find_in(roots, "mtp/rt/experts.bin") or data / "mtp/rt/experts.bin").parent.parent
     rt = mtp / "rt"
-    if not (rt / "experts.bin").exists():
+    mtp_corrupt = (rt / "experts.bin").exists() and mtp_is_corrupt(mtp)
+    if mtp_corrupt:
+        say("  The MTP tensors on disk are not the ones the fetch recorded (issue #327: a mirror that ignored the")
+        say("  Range header saved shard headers over them); reading them from a source that answers ranges.")
+    if not (rt / "experts.bin").exists() or mtp_corrupt:
         say("  The MTP draft layer (speculative decoding, ~2x faster output) comes from the original Qwen checkpoint:")
         say("  only its ~5 GB of MTP tensors are downloaded.")
         run([sys.executable, str(ROOT / "tools" / "mtp_fetch.py"), "fetch", "--out", str(mtp)], env=env)

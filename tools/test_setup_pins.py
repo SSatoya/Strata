@@ -214,5 +214,34 @@ class Requirements(unittest.TestCase):
         self.assertEqual(ran, ["tqdm==4.70.1"])
 
 
+class MTPInstall(unittest.TestCase):
+    """setup's check that the MTP tensors on disk are the ones tools/mtp_fetch.py recorded (#327): a mirror that
+    ignores the HTTP Range header saves shard headers instead of weights, and such an install must be read again."""
+
+    def mtp(self, d: Path, manifest=True) -> Path:
+        (d / "tensors").mkdir()
+        if manifest:
+            (d / "mtp-manifest.json").write_text("[]")
+        return d
+
+    def test_an_install_from_before_the_check_is_left_as_it_is(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(setup, "run", mock.Mock(side_effect=AssertionError("checked an unrecorded install"))):
+                self.assertFalse(setup.mtp_is_corrupt(self.mtp(Path(d), manifest=False)))
+
+    def test_a_good_install_is_kept(self):
+        with tempfile.TemporaryDirectory() as d:
+            ran = mock.Mock(return_value=mock.Mock(returncode=0))
+            with mock.patch.object(setup, "run", ran):
+                self.assertFalse(setup.mtp_is_corrupt(self.mtp(Path(d))))
+            self.assertEqual(ran.call_args[0][0][:4],
+                             [sys.executable, str(setup.ROOT / "tools" / "mtp_fetch.py"), "verify", "--out"])
+
+    def test_a_corrupt_install_is_read_again(self):
+        with tempfile.TemporaryDirectory() as d:
+            with mock.patch.object(setup, "run", mock.Mock(return_value=mock.Mock(returncode=1))):
+                self.assertTrue(setup.mtp_is_corrupt(self.mtp(Path(d))))
+
+
 if __name__ == "__main__":
     unittest.main()
