@@ -154,6 +154,26 @@ class Engine(unittest.TestCase):
         self.assertEqual(got, [setup.PREBUILT_URL + setup.PREBUILT_ASSET])
         self.assertIn("No ready-made engine for v0.1.31", out)
 
+    def test_a_refused_archive_is_not_kept(self):
+        """PR #324: a refused archive (too old, or no code for the GPU) kept its zip and .done mark, and every later
+        run reused it ("already downloaded") instead of the published one."""
+        for meta in ({"version": "0.1.0", "archs": [89]},
+                     {"version": ".".join(map(str, setup.MIN_ENGINE)), "archs": [120]}):
+            with self.subTest(meta=meta):
+                def download(url, dst, what=None):
+                    with zipfile.ZipFile(dst, "w") as z:
+                        z.writestr("BUILD.json", json.dumps(meta))
+                        z.writestr(setup.EXE, b"engine")
+                    setup.mark(dst)
+
+                with mock.patch.object(setup.urllib.request, "urlopen", lambda req, timeout=None: Response()), \
+                        mock.patch.object(setup, "download", download):
+                    eng, _ = quiet(setup.get_prebuilt, setup.PREBUILT_URL, {"arch": 89}, "gpu")
+                self.assertIsNone(eng)
+                z = self.root / "engine" / setup.PREBUILT_ASSET
+                self.assertFalse(z.exists())
+                self.assertFalse(z.with_name(z.name + ".done").exists())
+
     def test_an_installed_engine_is_kept(self):
         (self.root / "engine" / "BUILD.json").write_text(json.dumps(
             {"version": ".".join(map(str, setup.MIN_ENGINE)), "archs": [89]}))
@@ -215,32 +235,31 @@ class Requirements(unittest.TestCase):
 
 
 class MTPInstall(unittest.TestCase):
-    """setup's check that the MTP tensors on disk are the ones tools/mtp_fetch.py recorded (#327): a mirror that
-    ignores the HTTP Range header saves shard headers instead of weights, and such an install must be read again."""
+    """setup's check that the MTP tensors on disk are the pinned checkpoint's (#327): a mirror that ignores the
+    HTTP Range header saves shard headers instead of weights, and such an install must be read again."""
 
-    def mtp(self, d: Path, manifest=True) -> Path:
+    def mtp(self, d: Path) -> Path:
         (d / "tensors").mkdir()
-        if manifest:
-            (d / "mtp-manifest.json").write_text("[]")
         return d
 
-    def test_an_install_from_before_the_check_is_left_as_it_is(self):
+    def test_an_install_without_fetched_tensors_is_left_as_it_is(self):
         with tempfile.TemporaryDirectory() as d:
-            with mock.patch.object(setup, "run", mock.Mock(side_effect=AssertionError("checked an unrecorded install"))):
-                self.assertFalse(setup.mtp_is_corrupt(self.mtp(Path(d), manifest=False)))
+            with mock.patch.object(setup.subprocess, "run",
+                                   mock.Mock(side_effect=AssertionError("checked an install that fetched nothing"))):
+                self.assertFalse(setup.mtp_corrupt(Path(d)))
 
     def test_a_good_install_is_kept(self):
         with tempfile.TemporaryDirectory() as d:
             ran = mock.Mock(return_value=mock.Mock(returncode=0))
-            with mock.patch.object(setup, "run", ran):
-                self.assertFalse(setup.mtp_is_corrupt(self.mtp(Path(d))))
+            with mock.patch.object(setup.subprocess, "run", ran):
+                self.assertFalse(setup.mtp_corrupt(self.mtp(Path(d))))
             self.assertEqual(ran.call_args[0][0][:4],
                              [sys.executable, str(setup.ROOT / "tools" / "mtp_fetch.py"), "verify", "--out"])
 
     def test_a_corrupt_install_is_read_again(self):
-        with tempfile.TemporaryDirectory() as d:
-            with mock.patch.object(setup, "run", mock.Mock(return_value=mock.Mock(returncode=1))):
-                self.assertTrue(setup.mtp_is_corrupt(self.mtp(Path(d))))
+        with tempfile.TemporaryDirectory() as d:                      # verify's exit 3: a tensor is missing or wrong
+            with mock.patch.object(setup.subprocess, "run", mock.Mock(return_value=mock.Mock(returncode=3))):
+                self.assertTrue(setup.mtp_corrupt(self.mtp(Path(d))))
 
 
 if __name__ == "__main__":

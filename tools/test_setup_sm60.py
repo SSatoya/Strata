@@ -118,10 +118,20 @@ class TheToolkit(unittest.TestCase):
         with self.assertRaises(SystemExit) as got:
             self.build_tools(only13, out=out)
         self.assertEqual(got.exception.code, 1)
-        self.assertIn("which needs: the NVIDIA CUDA Toolkit 12.6", out.getvalue())
-        self.assertNotIn("CUDA Toolkit 13", out.getvalue())     # CUDA 13 removed compute_60/61/70 (#236)
-        with self.assertRaises(SystemExit):                     # and no toolkit at all
+        self.assertIn("needs the NVIDIA CUDA Toolkit 12.x", out.getvalue())
+        self.assertNotIn("CUDA 13.0", out.getvalue())         # CUDA 13 removed compute_60/61/70 (#236 #295)
+        with self.assertRaises(SystemExit):                   # and no toolkit at all
             self.build_tools([], out=io.StringIO())
+
+    def test_one_engine_is_not_built_for_both_generations(self):
+        """A CUDA 12.x toolkit cannot build sm_120 and CUDA 13 cannot build sm_60: such a pair of cards is
+        stopped before anything is installed, and asked to pick one kind (#295)."""
+        found = [("/usr/local/cuda-12.6/bin/nvcc", (12, 6)), ("/usr/local/cuda-13.2/bin/nvcc", (13, 2))]
+        out = io.StringIO()
+        with self.assertRaises(SystemExit) as got:
+            self.build_tools(found, archs=("61", "120"), out=out)
+        self.assertEqual(got.exception.code, 1)
+        self.assertIn("one engine cannot be built for both", out.getvalue())
 
     def test_cuda_12_is_the_one_it_compiles_with(self):
         found = [("/usr/bin/nvcc", (11, 5)), ("/usr/local/cuda-12.6/bin/nvcc", (12, 6)),

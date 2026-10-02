@@ -1,15 +1,17 @@
-"""Tests for tools/mtp_fetch.py (#327): a mirror that ignores the Range header is refused instead of saving the
-shard's own header over a tensor, an inventory read from another repository is read again, and a tensor on disk
-that is a shard header or no longer hashes to what was recorded is fetched again.  A fake mirror serves a
-synthetic safetensors shard - nothing is downloaded, no model runs.
+"""Tests for tools/mtp_fetch.py (#327): a range read needs a 206 with the asked Content-Range, the pinned revision's
+tensors are checked against their sha256 (a wrong one is fetched again; a corrupt install is found by `verify` and
+setup fetches it again), and an inventory from another revision is read again.  A fake checkpoint behind a mocked
+urlopen - nothing is downloaded.
 
     python -m unittest tools.test_mtp_fetch
 """
 from __future__ import annotations
 
 import contextlib
+import hashlib
 import io
 import json
+import os
 import struct
 import sys
 import tempfile
@@ -20,51 +22,30 @@ from unittest import mock
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tools"))
-import mtp_fetch  # noqa: E402
-
-REPO = "https://mirror.invalid/Qwen/Qwen3.8-Flash-Next/resolve/de4b8e4d43b917e7706784d8bb445c9af86a3540/"
-SHARD = "model-00001-of-00002.safetensors"
+import mtp_fetch as M  # noqa: E402
 
 
-def blob(seed, n):
-    """Deterministic tensor bytes that are never a safetensors header (byte 8 is never '{')."""
-    return bytes(((seed * 37 + i * 11) % 251) for i in range(n))
+def shard(tensors):
+    """A safetensors file: [u64 header length][JSON header][data]."""
+    header, data = {}, b""
+    for name, blob in tensors:
+        header[name] = {"dtype": "BF16", "shape": [len(blob) // 2], "data_offsets": [len(data), len(data) + len(blob)]}
+        data += blob
+    h = json.dumps(header).encode()
+    return struct.pack("<Q", len(h)) + h + data
 
 
-TENSORS = {
-    "mtp.layers.0.fc_embedding.weight": ("BF16", [8, 8], blob(1, 128)),
-    "mtp.layers.0.norm.weight": ("F32", [16], blob(2, 64)),
-    "model.layers.0.mlp.weight": ("BF16", [4, 4], blob(3, 32)),      # not an MTP tensor: never fetched
-}
-MTP_NAMES = sorted(n for n in TENSORS if n.startswith("mtp."))
-
-
-def shard_bytes():
-    """A safetensors shard: u64 header length, the JSON header padded to 8 bytes, then the tensor data."""
-    header, off, data = {}, 0, b""
-    for name, (dtype, shape, raw) in TENSORS.items():
-        header[name] = {"dtype": dtype, "shape": shape, "data_offsets": [off, off + len(raw)]}
-        data += raw
-        off += len(raw)
-    js = json.dumps(header, separators=(",", ":")).encode()
-    js += b" " * (-len(js) % 8)
-    return struct.pack("<Q", len(js)) + js + data
-
-
-SHARD_BYTES = shard_bytes()
-HEADER_LEN = struct.unpack("<Q", SHARD_BYTES[:8])[0]
-FILES = {SHARD: SHARD_BYTES,
-         "model.safetensors.index.json": json.dumps(
-             {"metadata": {"total_size": 0}, "weight_map": {n: SHARD for n in TENSORS}}).encode()}
+A, B, X = bytes(range(64)), bytes(range(100, 164)) * 2, b"\x07" * 48
+FILES = {"model-1.safetensors": shard([("model.x", X), ("mtp.a", A)]), "model-2.safetensors": shard([("mtp.b", B)])}
+INDEX = json.dumps({"weight_map": {"model.x": "model-1.safetensors", "mtp.a": "model-1.safetensors",
+                                   "mtp.b": "model-2.safetensors"}}).encode()
+HASHES = {"mtp.a": hashlib.sha256(A).hexdigest(), "mtp.b": hashlib.sha256(B).hexdigest()}
 
 
 class Response(io.BytesIO):
-    def __init__(self, body=b"", status=200, content_range=None):
+    def __init__(self, body, status, headers):
         super().__init__(body)
-        self.status = status
-        self.headers = {"Content-Length": str(len(body))}
-        if content_range:
-            self.headers["Content-Range"] = content_range
+        self.status, self.headers = status, headers
 
     def __enter__(self):
         return self
@@ -74,198 +55,160 @@ class Response(io.BytesIO):
 
 
 class Mirror:
-    """The fake endpoint.  `ranges=False` is the mirror from #327: it answers a range request with the whole
-    file (200), which the old code saved as the tensor because the length and its own hash both agreed."""
+    """urlopen for the fake checkpoint.  `ignore_range`: 200 and the whole file (`cut`: cut to the asked length, as
+    the proxy in #327 did); `wrong`: the bytes of these tensors' ranges are flipped (a source that sends bad data)."""
 
-    def __init__(self, files=FILES, ranges=True, content_range=None, truncate=False):
-        self.files, self.ranges, self.content_range, self.truncate = files, ranges, content_range, truncate
-        self.seen = []                                    # (file, Range header) of every request it answered
+    def __init__(self, ignore_range=False, cut=False, wrong=()):
+        self.ignore_range, self.cut, self.wrong, self.ranges = ignore_range, cut, set(wrong), []
 
-    def urlopen(self, req, timeout=None):
-        body = self.files[req.full_url.rsplit("/", 1)[-1]]
+    def __call__(self, req, timeout=None):
+        name = req.full_url.rsplit("/", 1)[1]
+        body = INDEX if name == "model.safetensors.index.json" else FILES[name]
         rng = req.get_header("Range")
-        self.seen.append((req.full_url.rsplit("/", 1)[-1], rng))
-        if req.get_method() == "HEAD":
-            return Response(b"", status=200)
         if rng is None:
-            return Response(body, status=200)
-        start, end = (int(x) for x in rng[len("bytes="):].split("-"))
-        if not self.ranges:                               # the server dropped the Range header
-            return Response(body[: end - start + 1] if self.truncate else body, status=200)
-        return Response(body[start:end + 1], status=206,
-                        content_range=self.content_range or "bytes %d-%d/%d" % (start, end, len(body)))
+            return Response(body, 200, {"Content-Length": str(len(body))})
+        a, b = map(int, rng.split("=")[1].split("-"))
+        self.ranges.append((name, a, b))
+        if self.ignore_range:
+            return Response(body[:b - a + 1] if self.cut else body, 200, {})
+        part = body[a:b + 1]
+        if any(t in self.wrong and self.span(name, t) == (a, b) for t in ("mtp.a", "mtp.b")):
+            part = bytes(x ^ 0xFF for x in part)
+        return Response(part, 206, {"Content-Range": "bytes %d-%d/%d" % (a, b, len(body))})
+
+    @staticmethod
+    def span(name, tensor):
+        raw = FILES[name]
+        n = struct.unpack("<Q", raw[:8])[0]
+        meta = json.loads(raw[8:8 + n]).get(tensor)
+        return (8 + n + meta["data_offsets"][0], 8 + n + meta["data_offsets"][1] - 1) if meta else None
 
 
-def quiet(fn, *args, **kw):
-    """Runs fn with stdout swallowed, returning (what it returned, what it printed to stderr)."""
-    err = io.StringIO()
-    with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(err):
-        return fn(*args, **kw), err.getvalue()
-
-
-class MTPFetch(unittest.TestCase):
+class FetchCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        self.dir = Path(self.tmp.name)
+        self.out = Path(self.tmp.name)
+        self.patches = [mock.patch.object(M, "SHA256", HASHES), mock.patch.object(M.time, "sleep", lambda s: None),
+                        mock.patch.object(M, "REPO", M.PINNED)]
+        for p in self.patches:
+            p.start()
 
     def tearDown(self):
+        for p in reversed(self.patches):
+            p.stop()
         self.tmp.cleanup()
 
-    def net(self, mirror, fn, *args, repo=REPO, **kw):
-        """Runs fn against the fake mirror, with the retry sleeps switched off, and returns its stderr."""
-        with mock.patch.object(mtp_fetch, "REPO", repo), \
-                mock.patch.object(mtp_fetch.urllib.request, "urlopen", mirror.urlopen), \
-                mock.patch.object(mtp_fetch.time, "sleep", lambda s: None):
-            return quiet(fn, *args, **kw)[1]
-
     def fetch(self, mirror):
-        return self.net(mirror, mtp_fetch.fetch, str(self.dir))
+        with mock.patch.object(M.urllib.request, "urlopen", mirror), contextlib.redirect_stdout(io.StringIO()), \
+                contextlib.redirect_stderr(io.StringIO()) as err:
+            M.fetch(str(self.out), None)
+        return err.getvalue()
 
     def tensor(self, name):
-        return (self.dir / "tensors" / (name + ".bin")).read_bytes()
+        return (self.out / "tensors" / (name + ".bin")).read_bytes()
 
-    def manifest(self):
-        return json.loads((self.dir / "mtp-manifest.json").read_text())
+
+class Ranges(FetchCase):
+    def test_check_range(self):
+        M.check_range(206, "bytes 10-19/100", 10, 19)
+        for status, cr in ((200, None), (200, "bytes 10-19/100"), (206, "bytes 0-9/100"), (206, None)):
+            with self.subTest(status=status, cr=cr), self.assertRaises(IOError):
+                M.check_range(status, cr, 10, 19)
 
     def test_a_mirror_that_ignores_range_is_refused(self):
-        mirror = Mirror(ranges=False, truncate=True)      # 200 cut to the length asked for: what #327 saw
-        with mock.patch.object(mtp_fetch, "REPO", REPO), \
-                mock.patch.object(mtp_fetch.urllib.request, "urlopen", mirror.urlopen):
-            with self.assertRaises(mtp_fetch.RangeRefused) as cm:
-                mtp_fetch.get(REPO + SHARD, 0, 7)
-        msg = str(cm.exception)
-        self.assertIn("HTTP 200 instead of 206 for bytes 0-7", msg)
-        self.assertIn("ignored the Range header", msg)
-        self.assertIn("STRATA_MTP_REPO", msg)
-        self.assertEqual(len(mirror.seen), 1)             # not retried: that server answers the same way every time
+        for cut in (False, True):                 # the whole file, or cut to the asked length (#327's proxy)
+            with self.subTest(cut=cut), mock.patch.object(M.urllib.request, "urlopen", Mirror(True, cut)), \
+                    contextlib.redirect_stderr(io.StringIO()), self.assertRaisesRegex(IOError, "not honoured"):
+                M.get(M.REPO + "model-1.safetensors", 8, 15)
 
-    def test_a_fetch_stops_at_such_a_mirror_and_saves_nothing(self):
-        mirror = Mirror(ranges=False)
-        with self.assertRaises(mtp_fetch.RangeRefused):
-            self.net(mirror, mtp_fetch.inventory, str(self.dir))
-        self.assertFalse((self.dir / "tensors").exists())
-
-    def test_a_wrong_content_range_is_refused(self):
-        mirror = Mirror(content_range="bytes 0-7/%d" % len(SHARD_BYTES))   # 206, but not the slice asked for
-        with mock.patch.object(mtp_fetch, "REPO", REPO), \
-                mock.patch.object(mtp_fetch.urllib.request, "urlopen", mirror.urlopen):
-            with self.assertRaises(mtp_fetch.RangeRefused) as cm:
-                mtp_fetch.get(REPO + SHARD, 8, 20)
-        self.assertIn("Content-Range 'bytes 0-7/", str(cm.exception))
-
-    def test_a_short_206_is_still_reported_as_a_short_read(self):
-        class Short(Mirror):
-            def urlopen(self, req, timeout=None):
-                r = super().urlopen(req, timeout)
-                if r.status == 206:
-                    r.seek(0)
-                    r.truncate(3)
-                return r
-
-        with mock.patch.object(mtp_fetch, "REPO", REPO), \
-                mock.patch.object(mtp_fetch.urllib.request, "urlopen", Short().urlopen), \
-                mock.patch.object(mtp_fetch.time, "sleep", lambda s: None):
-            with self.assertRaises(IOError) as cm:
-                mtp_fetch.get(REPO + SHARD, 0, 7)
-        self.assertIn("short range read: 3 of 8", str(cm.exception))
-
-    def test_the_inventory_records_what_a_shard_header_is(self):
-        self.net(Mirror(), mtp_fetch.inventory, str(self.dir))
-        inv = json.loads((self.dir / "mtp-inventory.json").read_text())
-        self.assertEqual(inv["repo"], REPO)
-        self.assertEqual([r["name"] for r in inv["tensors"]], MTP_NAMES)
-        self.assertTrue(all(r["header_len"] == HEADER_LEN for r in inv["tensors"]))
-        self.assertTrue(all(r["start"] >= HEADER_LEN + 8 for r in inv["tensors"]))
-
-    def test_fetch_saves_the_tensor_bytes(self):
+    def test_fetch_from_an_honest_mirror(self):
         self.fetch(Mirror())
-        for name in MTP_NAMES:
-            self.assertEqual(self.tensor(name), TENSORS[name][2])
-        manifest = self.manifest()
-        self.assertEqual([r["name"] for r in manifest], MTP_NAMES)
-        for row in manifest:
-            self.assertEqual(row["repo"], REPO)
-            self.assertEqual(row["bytes"], len(TENSORS[row["name"]][2]))
-            self.assertEqual(len(row["sha256"]), 64)
-        self.assertFalse((self.dir / "tensors" / "model.layers.0.mlp.weight.bin").exists())
+        self.assertEqual((self.tensor("mtp.a"), self.tensor("mtp.b")), (A, B))
+        manifest = json.loads((self.out / "mtp-manifest.json").read_text())
+        self.assertEqual({r["name"]: r["sha256"] for r in manifest}, HASHES)
+        self.assertEqual(M.verify(str(self.out)), [])
 
-    def test_a_good_install_is_not_downloaded_again(self):
+    def test_wrong_bytes_are_fetched_again_once_then_refused(self):
         self.fetch(Mirror())
-        second = Mirror()
-        self.fetch(second)
-        self.assertEqual(second.seen, [])
+        bad = bytes(len(A))                       # an install the #327 mirror corrupted: right size, wrong bytes
+        (self.out / "tensors" / "mtp.a.bin").write_bytes(bad)
+        self.assertEqual(M.verify(str(self.out)), ["mtp.a"])
+        err = self.fetch(Mirror())                # setup runs fetch again: the bad one is fetched again
+        self.assertIn("mtp.a: wrong bytes", err)
+        self.assertEqual(self.tensor("mtp.a"), A)
+        self.assertEqual(M.verify(str(self.out)), [])
+        os.remove(self.out / "tensors" / "mtp.b.bin")
+        with self.assertRaises(SystemExit) as cm:
+            self.fetch(Mirror(wrong={"mtp.b"}))     # a source that keeps sending wrong data
+        self.assertIn("is not the checkpoint's", str(cm.exception))
+        self.assertFalse((self.out / "tensors" / "mtp.b.bin").exists())
 
-    def test_a_saved_shard_header_is_fetched_again(self):
-        """Exactly what #327 left behind: the tensor file holds the shard's first bytes, and the manifest hash
-        matches those bytes - so only recognising the header finds it."""
+    def test_an_inventory_from_another_revision_is_read_again(self):
         self.fetch(Mirror())
-        name = "mtp.layers.0.fc_embedding.weight"
-        row = next(r for r in self.manifest() if r["name"] == name)
-        (self.dir / "tensors" / (name + ".bin")).write_bytes(SHARD_BYTES[: row["bytes"]])
-        err = self.fetch(Mirror())
-        self.assertIn("are model-00001-of-00002.safetensors's own header", err)
-        self.assertEqual(self.tensor(name), TENSORS[name][2])
-
-    def test_a_tensor_that_no_longer_hashes_to_what_was_recorded_is_fetched_again(self):
-        self.fetch(Mirror())
-        name = "mtp.layers.0.norm.weight"
-        (self.dir / "tensors" / (name + ".bin")).write_bytes(blob(99, len(TENSORS[name][2])))
-        err = self.fetch(Mirror())
-        self.assertIn("sha256 is not the one the earlier fetch recorded", err)
-        self.assertEqual(self.tensor(name), TENSORS[name][2])
-
-    def test_a_part_written_tensor_is_resumed_from_where_it_stopped(self):
-        self.fetch(Mirror())
-        name, raw = "mtp.layers.0.fc_embedding.weight", TENSORS["mtp.layers.0.fc_embedding.weight"][2]
-        row = next(r for r in self.manifest() if r["name"] == name)
-        (self.dir / "tensors" / (name + ".bin")).write_bytes(raw[:16])
+        inv = json.loads((self.out / "mtp-inventory.json").read_text())
+        inv["repo"] = "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/main/"
+        for r in inv["tensors"]:
+            r["start"] += 1                        # that revision's ranges: not this one's
+            r["end"] += 1
+        (self.out / "mtp-inventory.json").write_text(json.dumps(inv))
+        (self.out / "tensors" / "mtp.b.bin").write_bytes(B[:10])     # half a tensor from that revision
         mirror = Mirror()
         self.fetch(mirror)
-        self.assertEqual(self.tensor(name), raw)
-        self.assertEqual([rng for _, rng in mirror.seen if rng], ["bytes=%d-%d" % (row["start"] + 16, row["end"])])
+        self.assertEqual(json.loads((self.out / "mtp-inventory.json").read_text())["repo"], M.REPO)
+        self.assertEqual((self.tensor("mtp.a"), self.tensor("mtp.b")), (A, B))
+        fetched = [r for r in mirror.ranges if r[2] - r[1] + 1 in (len(A), len(B))]
+        self.assertEqual(fetched, [("model-2.safetensors",) + Mirror.span("model-2.safetensors", "mtp.b")],
+                         "mtp.a was right and is kept; mtp.b is fetched whole")
 
-    def test_an_inventory_from_another_repository_is_read_again(self):
+    def test_verify_keeps_its_verdict_and_skips_other_revisions(self):
         self.fetch(Mirror())
-        mirror = Mirror()
-        err = self.net(mirror, mtp_fetch.fetch, str(self.dir),
-                       repo=REPO.replace("/resolve/de4b8e4d43b917e7706784d8bb445c9af86a3540/", "/resolve/main/"))
-        self.assertIn("the saved inventory was read from", err)
-        self.assertIn("reading it again", err)
-        self.assertIn(("model.safetensors.index.json", None), mirror.seen)
+        self.assertEqual(M.verify(str(self.out)), [])
+        stamps = json.loads((self.out / "tensors" / "verified.json").read_text())
+        self.assertEqual(sorted(stamps), ["mtp.a", "mtp.b"])
+        with mock.patch.object(M, "sha256_of", side_effect=AssertionError("hashed an unchanged file")):
+            self.assertEqual(M.verify(str(self.out)), [])
+        with mock.patch.object(M, "REPO", "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/main/"):
+            (self.out / "tensors" / "mtp.a.bin").write_bytes(b"x")
+            self.assertEqual(M.verify(str(self.out)), [])          # STRATA_MTP_REVISION: other hashes
+        self.assertEqual(M.verify(str(self.out)), ["mtp.a"])
+        self.assertEqual(M.verify(str(self.out / "nothing")), [])
 
-    def test_an_only_run_keeps_the_tensors_it_skipped_in_the_manifest(self):
-        self.fetch(Mirror())
-        name = "mtp.layers.0.norm.weight"
-        row = next(r for r in self.manifest() if r["name"] == name)
-        (self.dir / "tensors" / (name + ".bin")).write_bytes(blob(9, row["bytes"]))
-        mirror = Mirror()
-        self.net(mirror, mtp_fetch.fetch, str(self.dir), only=name)
-        self.assertEqual([rng for _, rng in mirror.seen], ["bytes=%d-%d" % (row["start"], row["end"])])
-        self.assertEqual([r["name"] for r in self.manifest()], MTP_NAMES)
-        self.assertEqual(quiet(mtp_fetch.verify, str(self.dir))[0], 0)
 
-    def test_verify_reads_the_disk_and_never_the_network(self):
-        self.fetch(Mirror())
-        with mock.patch.object(mtp_fetch.urllib.request, "urlopen",
-                               lambda req, timeout=None: (_ for _ in ()).throw(AssertionError("asked the network"))):
-            rc, _ = quiet(mtp_fetch.verify, str(self.dir))
-        self.assertEqual(rc, 0)
+class Pinned(unittest.TestCase):
+    def test_every_tensor_has_a_hash(self):
+        self.assertEqual(len(M.SHA256), 31)
+        for name, h in M.SHA256.items():
+            self.assertTrue(name.startswith("mtp."))
+            self.assertRegex(h, "^[0-9a-f]{64}$")
+        self.assertIn(M.PINNED_REVISION, M.PINNED)
 
-    def test_verify_names_a_corrupt_tensor(self):
-        self.fetch(Mirror())
-        name = "mtp.layers.0.fc_embedding.weight"
-        path = self.dir / "tensors" / (name + ".bin")
-        path.write_bytes(SHARD_BYTES[: len(TENSORS[name][2])])
-        rc, err = quiet(mtp_fetch.verify, str(self.dir))
-        self.assertEqual(rc, 1)
-        self.assertIn(name + ".bin: holds model-00001-of-00002.safetensors's header", err)
-        path.write_bytes(TENSORS[name][2][:8])
-        rc, err = quiet(mtp_fetch.verify, str(self.dir))
-        self.assertEqual(rc, 1)
-        self.assertIn("size 8 != 128", err)
+
+class Setup(unittest.TestCase):
+    def test_setup_rebuilds_a_corrupt_install(self):
+        import setup
+        with tempfile.TemporaryDirectory() as d:
+            mtp = Path(d)
+            self.assertFalse(setup.mtp_corrupt(mtp))              # no tensors kept: nothing to check
+            (mtp / "tensors").mkdir()
+            for code, want in ((0, False), (3, True), (1, False)):
+                with self.subTest(code=code), mock.patch.object(
+                        setup.subprocess, "run", return_value=mock.Mock(returncode=code)) as run:
+                    self.assertEqual(setup.mtp_corrupt(mtp), want)
+                    self.assertIn("verify", run.call_args[0][0])
+
+
+class AlternateHost(unittest.TestCase):
+    """STRATA_MTP_REPO (#327): when the pinned host is reached through a proxy that drops the Range header, another
+    host can serve the same files; the pinned revision's hashes are the pinned host's, so they stop applying."""
+
+    def test_another_host_is_read_and_its_bytes_are_its_own(self):
+        import subprocess
+        env = {**os.environ, "STRATA_MTP_REPO": "https://mirror.example/Qwen3.8-Flash-Next/resolve/x/"}
+        p = subprocess.run([sys.executable, "-c", "import mtp_fetch as m; print(m.REPO, m.pinned())"],
+                           cwd=ROOT / "tools", env=env, capture_output=True, text=True)
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertEqual(p.stdout.split(), ["https://mirror.example/Qwen3.8-Flash-Next/resolve/x/", "False"])
 
 
 if __name__ == "__main__":
     unittest.main()
-
-

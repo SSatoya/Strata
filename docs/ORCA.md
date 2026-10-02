@@ -43,11 +43,12 @@ This uses the original model's draft head, as setup does for Swift. The target m
 proposals; draft acceptance and performance must be measured for this fine-tune.
 
 `fetch` trusts a range request only when the server answers `206 Partial Content` with exactly the range
-asked for: a mirror or proxy that drops the `Range` header returns the whole shard instead, and the first
-bytes of a shard are its JSON header - saved as a tensor, the draft layer loads and accepts nothing (issue
-#327). If it stops with `the server ignored the Range header`, set `STRATA_MTP_REPO` to a source that
-answers range requests. `tools/mtp_fetch.py verify --out mtp` re-hashes an install you already have,
-without downloading.
+asked for, and checks every tensor of the pinned revision against its SHA256: a mirror or proxy that drops
+the `Range` header returns the whole shard instead, and the first bytes of a shard are its JSON header -
+saved as a tensor, the draft layer loads and accepts nothing (issue #327). If it stops with `range request
+not honoured`, set `STRATA_MTP_REPO` to a source that answers range requests (another repository's tensors
+are kept on that source's own 206 answers, without the pinned hashes). `tools/mtp_fetch.py verify --out mtp`
+re-hashes an install you already have, without downloading.
 
 ## Local server
 
