@@ -1,0 +1,50 @@
+{
+ "name": "C3",
+ "extra": [
+  "--ple-inflight",
+  "256",
+  "--ple-row-cache",
+  "16777216"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 350.6,
+   "gen_tok": 128,
+   "gen_ms": 4619,
+   "gen_tps": 27.7,
+   "acc": "59/71",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 334.2,
+   "gen_tok": 128,
+   "gen_ms": 4679,
+   "gen_tps": 27.4,
+   "acc": "57/65",
+   "hit": 71.5
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 329.5,
+   "gen_tok": 128,
+   "gen_ms": 4372,
+   "gen_tps": 29.3,
+   "acc": "60/69",
+   "hit": 66.3
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 28.1,
+ "decode_max": 29.3
+}

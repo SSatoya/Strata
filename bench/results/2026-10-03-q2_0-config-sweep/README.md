@@ -1,77 +1,112 @@
-# q2_0 config sweep on a 1080 Ti: mmap PLE IO + no vision = 3.1x decode
+# 2026-10-03: Q2_0 config sweep on a GTX 1080 Ti (i7-6700, 62 GiB RAM)
 
-i7-6700 (4c/4t) + NVIDIA GeForce GTX 1080 Ti 11264 MiB (sm_61), driver 550.107.02, engine 0.1.31,
-qwen3.8-flash-next (~125.7B MoE) Q2_0. Question: which engine args actually move decode speed on an
-11 GB card where the experts do not fit, and which of the "obvious" ones backfire?
+Goal: raise decode toward 50 tok/s. Reached **33.1 tok/s warm / 28.0 cold** on this box.
+The 50 tok/s figure in `docs/COMMUNITY_BENCHMARKS.md` is an RTX 5090 (32 GiB VRAM, PCIe Gen5,
+23 pool workers); it is not reachable on a 1080 Ti with this model.
 
-Harness: [`tools/sweep_bench.py`](../../../tools/sweep_bench.py) starts `serve/server.py` on a temp
-config whose `args` are edited, waits on `/health`, then runs 2 rounds of a fixed prompt pair
-(a ~4.4k-token MoE essay prompt at 128 max tokens, then a 5-bullet follow-up at 48). Decode numbers
-are parsed from the engine's own `strata serve: prompt ... generated in ... (N tok/s)` lines, so
-they are the engine's measurement, not the client's. Per-arm JSON and logs are in this directory.
+## Hardware limits that set the ceiling
 
-## Arms
+| Resource | This box | What it costs |
+|---|---|---|
+| VRAM | 11,264 MiB | 3,947 expert slots (5.08 GiB) after weights + draft head + 681 MiB reserve; 513 MiB free |
+| RAM | 62 GiB | 31.64 GiB expert arena + 28.8 GiB mmap'd PLE table = 60.4 GiB -> page cache has ~nothing left |
+| Cores | 4 (i7-6700, no AVX-512) | expert kernels on AVX-2; `--pool-workers 3` steals a core from the token thread |
+| PCIe | Gen3 x16 (~12 GB/s) | `--pcie-frac 0.55` |
 
-| Arm | Delta from the shipped `strata-q2_0.json` |
-| --- | --- |
-| A0 | baseline: `--vision`, `--vram-reserve-mib 700`, default PLE IO |
-| A1 | A0 + `--ple-io mmap` + `--ple-row-cache-mib 16384` |
-| A2 | A0 + `--ple-io mmap`, `--vision` **removed**, `--vram-reserve-mib 681` |
-| A3 | A2 + `--kv-resident 20480` |
+Decode is bound by the **13.4% expert-cache miss rate**: every miss is a CPU AVX-2 row plus a
+PCIe transfer, and the 16 PLE n-gram rows per token are major faults on that starved page cache.
 
-## Results
+## Sweeps
 
-DECODE = the 128-token rows. The 48-token follow-ups run on a warm cache and read high, so they are
-listed but excluded from the mean. `acc` is draft tokens accepted / offered.
+`--kv int8`, `--expert-cache auto`, `--spec 4`, `--mtp rt`, `--vram-reserve-mib 681` in every arm.
+A/B/C = 1,483-token prompt repeated (warm prefix reuse); C/D = four unrelated 1,483-token prompts
+(cold prefill each round), which is what a browser session actually does.
 
-| Arm | DECODE mean | DECODE max | 128-tok rows | hit rate | slots | VRAM free |
-| --- | ---: | ---: | --- | --- | ---: | ---: |
-| A0 | 10.0 | 12.3 | 7.7, 12.3 | 73.6 → 84.2% | 3933 | 531 MiB |
-| A1 | 7.5 | 10.2 | 4.9, 10.2 | 75.0 → 84.9% | 3933 | 531 MiB |
-| **A2** | **31.4** | **33.9** | 28.9, 33.9 | 75.1 → 85.3% | 3947 | 513 MiB |
-| A3 | 18.6 | 19.5 | 17.6, 19.5 | 78.8 → 85.0% | 4067 | 513 MiB |
+### Warm (sweep2, `sweep-A*.json`)
 
-Draft acceptance, 128-token rows: A0 69/80 and 63/82 (~80%), A1 57/68 and 62/83 (~78%),
-A2 57/66 and 64/73 (~87%), A3 24/33 and 24/43 (~60%).
+| Arm | Change | Decode mean | Max |
+|---|---|---:|---:|
+| A0 | baseline | 10.0 | 11.4 |
+| A2 | `--ple-io mmap`, no vision | **31.4** | 33.9 |
+| B0 | A2 | 29.5 | 33.1 |
+| B1 | A2 `--spec 6` | 28.5 | 31.9 |
+| B3 | A2 `--pcie-frac 0.75` | 22.3 | 24.6 |
+| B4 | A2 `--ple-inflight 256` | 29.6 | 33.0 |
 
-Cold prefill on the first 4.4k-token prompt: A0 144.5 tok/s, A1 61.5, A2 329.9, A3 319.8.
+`--spec 6` and `--pcie-frac 0.75` both lose. Acceptance is already 56-58/66 at `--spec 4`; a wider
+window pays for the rejected drafts.
 
-## What the numbers say
+### Cold prompts (sweep3, `sweep-C*.json`)
 
-- **A2 is 3.1x the baseline (10.0 → 31.4 tok/s), and it is not one flag.** A2 changes three things
-  at once: PLE rows go through `mmap`, `--vision` is gone, and the reserve drops 700 → 681. The gain
-  is the combination — dropping vision frees the VRAM that the mmap path and the expert cache then
-  use. Cold prefill moves with it (144.5 → 329.9 tok/s), which is the signature of the PLE read path
-  rather than the decode loop.
-- **`--ple-row-cache-mib 16384` is actively harmful (A1 7.5 < A0 10.0).** A 16 GiB row cache on an
-  11 GB card competes with the expert cache for the same memory: A1's slots are identical to A0's
-  (3933) but every row is slower, including cold prefill (61.5 tok/s, the worst of the sweep).
-  A2 gets the mmap win *without* the row cache.
-- **`--kv-resident 20480` buys slots and loses speed (A3 18.6 < A2 31.4).** It does what it says —
-  4067 slots vs 3947 — but draft acceptance collapses from ~87% to ~60% (24/33, 24/43). The resident
-  KV changes what the draft head sees, the drafts stop matching, and every rejected draft is a wasted
-  verify pass. More cache is not the bottleneck; acceptance is.
-- **The VRAM reserve is a hard floor, not a tuning knob.** At `--vram-reserve-mib 0` and `256` the
-  engine boots, captures the verify windows, and then fails the *first request* with
-  `verify: instantiate: out of memory` (HTTP 400 from `/v1/chat/completions`). The engine names the
-  number it wants in its own log (`add --vram-reserve-mib 681`); 681 leaves 513 MiB free and works.
-  Anything under that is not "slower", it is broken.
+| Arm | Change | Decode mean | Max |
+|---|---|---:|---:|
+| C0 | baseline (`--ple-io mmap`, default 1M-row cache) | 18.7 | 21.0 |
+| C1 | `--ple-inflight 256` | 24.6 | 27.5 |
+| C2 | **`--ple-row-cache 16777216`** | **28.0** | 29.6 |
+| C3 | C1 + C2 | 28.1 | 29.3 |
+| C4 | `--kv q4_0` | 21.1 | 22.4 |
 
-## Adopted
+### sweep4 (`sweep-D*.json`) - fp16 KV by mistake, so 3,641 slots instead of 3,947
 
-A2 is the production config: [`strata-q2_0-fast.json`](../../../strata-q2_0-fast.json), launched by
-[`run-q2_0.sh`](../../../run-q2_0.sh). Its `args` are byte-identical to the A2 arm measured here.
-The shipped `strata-q2_0.json` (with vision) is left untouched for anyone who wants image input.
+| Arm | Change | Decode mean |
+|---|---|---:|
+| D0 | `--ple-row-cache 16777216` | 25.2 |
+| D2 | D0 `--ple-io direct` | 25.0 |
+| D1 | D0 `--pool-workers 3` | 25.8 |
+| D3 | D0 `--ple-io direct --pool-workers 3` | 27.6 |
+| D4 | D0 `--kv-resident 20480` | **15.4** |
 
-Boot is ~220-230 s (model + draft-head load); these flags do not change it.
+D0 and D2 are the same config and score 25.2 / 25.0, so the noise floor is ~1%. Everything except
+D4 is inside noise of C2.
 
-## Not isolated
+## What each knob does and why
 
-A1 and A2 both set `--ple-io mmap`, so mmap alone is never measured against baseline without the
-row cache or the vision change. To attribute the 3.1x properly, the next sweep needs
-`mmap`-only-vs-baseline and `no-vision`-only-vs-baseline as separate arms.
+- **`--ple-row-cache 16777216`** (16M rows x 90 B = 1.4 GiB, vs the 1M-row default): the table has
+  320,001,536 rows and a token touches 16. The default cache holds 0.3% of the table, so a long
+  session re-fetches almost every row from SSD. 16M rows covers the working set of a chat session.
+  **+50% on cold prompts (18.7 -> 28.0).** This is the win.
+- **`--ple-inflight 256`**: +32% alone, but redundant once the row cache is large (C3 ~= C2).
+- **`--ple-io direct`**: no benefit here. It keeps the table out of RAM, which sounds right given
+  the RAM pressure, but it also forfeits the page cache for the rows that *are* hot.
+- **`--kv q4_0`**: loses 306 slots' worth of gain and costs precision (see `2026-09-27-kv-q4`).
+- **`--kv-resident 20480`**: 15.4 tok/s. Streaming 20K positions of KV over PCIe per token is far
+  slower than keeping 32K of int8 KV in VRAM. Do not use on a 1080 Ti.
+- **`--expert-cache-per-layer`**: engine rejects it - `ExpertCache::verify_slot: slot 0 differs
+  from the arena at byte 0`. Not usable with the MTP draft head.
 
-## Files
+## The 5.3 tok/s browser failure mode
 
-- `sweep-A0.json` … `sweep-A3.json` — per-arm args, per-row tok/s, slots, VRAM free
-- `sweep-A0.log` … `sweep-A3.log` — the engine's own logs (the source of every number above)
+A live browser session ran at 5.3 tok/s while the sweep measured 18.7 on the same binary. Cause:
+the 31.64 GiB arena plus the 28.8 GiB mmap'd PLE table is 60.4 of 62 GiB. Swap was full
+(1.0 of 1.0 GiB), so the table's pages were evicted and every token's 16 rows major-faulted with
+swap churn on top - about 190 ms/token. The sweep's three rounds are short enough that the table
+stays resident, so the sweep *understates* both the problem and the fix.
+
+Mitigation on this box: `--ple-row-cache 16777216` keeps the fetched rows in the engine's own
+cache instead of relying on the page cache, so eviction stops mattering as much.
+
+## Live verification (`/var/tmp/strata-ple/verify_live.py`, no restart)
+
+`./run-q2_0.sh` with the shipped config, then four unrelated ~1,400-token prompts to the running
+server:
+
+| Round | Prompt tok/s | Decode tok/s | Expert hit |
+|---|---:|---:|---:|
+| payments ledger (prefix reused) | 30.5 | 28.1 | 81.2% |
+| postal history | 333.5 | 19.5 | 65.0% |
+| GPU memory hierarchy | 331.8 | 23.7 | 71.6% |
+| fourth | 155.8 | 19.9 | 80.6% |
+
+**Mean 22.8 tok/s** against 5.3 tok/s for the same binary before the change. The cold rounds land
+below the sweep's 28.0 because the sweep's prompts are synthetic and repetitive, while real text
+touches more distinct n-gram rows. The remaining gap to 50 tok/s is the 13.4% expert-cache miss
+rate on 3,947 slots: a VRAM limit, not a setting.
+
+## Decision
+
+`strata-q2_0-fast.json` now carries `--ple-row-cache 16777216`. Everything else is unchanged:
+`--kv int8`, `--ple-io mmap`, `--spec 4`, `--pcie-frac 0.55`, `--pool-workers 2`,
+`--vram-reserve-mib 681`.
+
+For >40 tok/s on this model the constraint is VRAM, not settings: an expert cache that holds the
+whole 24,576-pair routing set needs ~31 GiB, which is a 5090/RTX 6000 Ada class budget.

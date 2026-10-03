@@ -1,0 +1,48 @@
+{
+ "name": "C4",
+ "extra": [
+  "--kv",
+  "q4_0"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 348.5,
+   "gen_tok": 128,
+   "gen_ms": 5703,
+   "gen_tps": 22.4,
+   "acc": "64/74",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 334.9,
+   "gen_tok": 128,
+   "gen_ms": 6227,
+   "gen_tps": 20.6,
+   "acc": "69/87",
+   "hit": 72.2
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 325.8,
+   "gen_tok": 128,
+   "gen_ms": 6298,
+   "gen_tps": 20.3,
+   "acc": "62/72",
+   "hit": 70.2
+  }
+ ],
+ "slots": [
+  "4094"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 21.1,
+ "decode_max": 22.4
+}

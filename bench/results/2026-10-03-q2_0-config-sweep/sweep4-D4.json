@@ -1,0 +1,50 @@
+{
+ "name": "D4",
+ "extra": [
+  "--ple-row-cache",
+  "16777216",
+  "--kv-resident",
+  "20480"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 339.4,
+   "gen_tok": 128,
+   "gen_ms": 7419,
+   "gen_tps": 17.3,
+   "acc": "12/19",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 319.5,
+   "gen_tok": 128,
+   "gen_ms": 8114,
+   "gen_tps": 15.8,
+   "acc": "39/56",
+   "hit": 74.7
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 312.9,
+   "gen_tok": 128,
+   "gen_ms": 9811,
+   "gen_tps": 13.0,
+   "acc": "23/31",
+   "hit": 67.8
+  }
+ ],
+ "slots": [
+  "3874"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 15.4,
+ "decode_max": 17.3
+}

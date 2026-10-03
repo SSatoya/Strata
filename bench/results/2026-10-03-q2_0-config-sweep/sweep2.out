@@ -1,0 +1,61 @@
+nohup: 入力を無視します
+[B0] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf
+[B0] up in 220 s
+[B0] round 1 wall 12.4 s
+[B0] round 2 wall 6.2 s
+[B0] round 3 wall 6.5 s
+[B0] slots ['3947'] vram free ['513'] mem None
+[B0]   gen  128 tok   22.7 tok/s (prompt   327.1, hit None, acc 65/79)
+[B0]   gen   48 tok   31.5 tok/s (prompt    36.9, hit 74.6, acc 26/29)
+[B0]   gen  128 tok   32.7 tok/s (prompt    47.2, hit 79.8, acc 57/68)
+[B0]   gen   48 tok   31.3 tok/s (prompt    38.4, hit 86.5, acc 25/30)
+[B0]   gen  128 tok   33.1 tok/s (prompt    47.3, hit 79.5, acc 56/66)
+[B0]   gen   48 tok   26.3 tok/s (prompt    35.7, hit 87.3, acc 26/29)
+[B0] DECODE mean 29.5 tok/s  max 33.1
+[B1] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --spec 6
+[B1] up in 200 s
+[B1] round 1 wall 12.5 s
+[B1] round 2 wall 6.5 s
+[B1] round 3 wall 6.4 s
+[B1] slots ['3946'] vram free ['501'] mem None
+[B1]   gen  128 tok   22.6 tok/s (prompt   327.6, hit None, acc 65/81)
+[B1]   gen   48 tok   29.2 tok/s (prompt    34.7, hit 73.9, acc 27/36)
+[B1]   gen  128 tok   31.0 tok/s (prompt    46.0, hit 79.4, acc 58/79)
+[B1]   gen   48 tok   29.4 tok/s (prompt    36.4, hit 86.8, acc 28/35)
+[B1]   gen  128 tok   31.9 tok/s (prompt    45.7, hit 78.8, acc 58/74)
+[B1]   gen   48 tok   29.3 tok/s (prompt    36.7, hit 87.8, acc 28/35)
+[B1] DECODE mean 28.5 tok/s  max 31.9
+[B2] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-cache-per-layer
+[B2] server exited (code 1) after 250 s
+[B3] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --pcie-frac 0.75
+[B3] up in 375 s
+[B3] round 1 wall 13.6 s
+[B3] round 2 wall 8.5 s
+[B3] round 3 wall 9.2 s
+[B3] slots ['3947'] vram free ['513'] mem None
+[B3]   gen  128 tok   20.9 tok/s (prompt   326.6, hit None, acc 57/66)
+[B3]   gen   48 tok   22.7 tok/s (prompt    28.5, hit 82.7, acc 26/29)
+[B3]   gen  128 tok   24.0 tok/s (prompt    34.6, hit 86.1, acc 56/68)
+[B3]   gen   48 tok   22.3 tok/s (prompt    29.2, hit 91.4, acc 26/31)
+[B3]   gen  128 tok   22.1 tok/s (prompt    34.3, hit 85.9, acc 55/64)
+[B3]   gen   48 tok   20.4 tok/s (prompt    27.3, hit 91.5, acc 25/28)
+[B3] DECODE mean 22.3 tok/s  max 24.0
+[B4] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --suffix-draft 8
+[B4] up in 200 s
+[B4] round 1 wall 11.9 s
+[B4] round 2 wall 6.6 s
+[B4] round 3 wall 6.5 s
+[B4] slots ['3947'] vram free ['513'] mem None
+[B4]   gen  128 tok   26.2 tok/s (prompt   325.1, hit None, acc 57/66)
+[B4]   gen   48 tok   27.5 tok/s (prompt    33.5, hit 75.1, acc 25/31)
+[B4]   gen  128 tok   31.3 tok/s (prompt    43.7, hit 79.5, acc 57/66)
+[B4]   gen   48 tok   27.7 tok/s (prompt    34.1, hit 86.9, acc 25/32)
+[B4]   gen  128 tok   31.4 tok/s (prompt    42.3, hit 79.1, acc 63/74)
+[B4]   gen   48 tok   29.3 tok/s (prompt    34.0, hit 86.8, acc 26/29)
+[B4] DECODE mean 29.6 tok/s  max 31.4
+
+=== SUMMARY ===
+B0                                  mean 29.5  max 33.1
+B1   --spec 6                       mean 28.5  max 31.9
+B3   --pcie-frac 0.75               mean 22.3  max 24.0
+B4   --suffix-draft 8               mean 29.6  max 31.4

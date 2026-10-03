@@ -1,0 +1,45 @@
+{
+ "name": "C0",
+ "extra": [],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 186.2,
+   "gen_tok": 128,
+   "gen_ms": 7414,
+   "gen_tps": 17.3,
+   "acc": "58/76",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 132.6,
+   "gen_tok": 128,
+   "gen_ms": 7210,
+   "gen_tps": 17.8,
+   "acc": "61/74",
+   "hit": 71.4
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 137.0,
+   "gen_tok": 128,
+   "gen_ms": 6092,
+   "gen_tps": 21.0,
+   "acc": "74/89",
+   "hit": 67.3
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 18.7,
+ "decode_max": 21.0
+}

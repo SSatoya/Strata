@@ -1,0 +1,78 @@
+{
+ "name": "B1",
+ "extra": [
+  "--spec",
+  "6"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 1483,
+   "reused": 0,
+   "prompt_tps": 327.6,
+   "gen_tok": 128,
+   "gen_ms": 5652,
+   "gen_tps": 22.6,
+   "acc": "65/81",
+   "hit": null
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1478,
+   "prompt_tps": 34.7,
+   "gen_tok": 48,
+   "gen_ms": 1643,
+   "gen_tps": 29.2,
+   "acc": "27/36",
+   "hit": 73.9
+  },
+  {
+   "prompt_tok": 1483,
+   "reused": 1478,
+   "prompt_tps": 46.0,
+   "gen_tok": 128,
+   "gen_ms": 4125,
+   "gen_tps": 31.0,
+   "acc": "58/79",
+   "hit": 79.4
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1478,
+   "prompt_tps": 36.4,
+   "gen_tok": 48,
+   "gen_ms": 1635,
+   "gen_tps": 29.4,
+   "acc": "28/35",
+   "hit": 86.8
+  },
+  {
+   "prompt_tok": 1483,
+   "reused": 1478,
+   "prompt_tps": 45.7,
+   "gen_tok": 128,
+   "gen_ms": 4008,
+   "gen_tps": 31.9,
+   "acc": "58/74",
+   "hit": 78.8
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1478,
+   "prompt_tps": 36.7,
+   "gen_tok": 48,
+   "gen_ms": 1638,
+   "gen_tps": 29.3,
+   "acc": "28/35",
+   "hit": 87.8
+  }
+ ],
+ "slots": [
+  "3946"
+ ],
+ "vram_free": [
+  "501"
+ ],
+ "mem": null,
+ "decode_mean": 28.5,
+ "decode_max": 31.9
+}

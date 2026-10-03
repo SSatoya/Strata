@@ -554,6 +554,74 @@ python tools/calibrate.py strata-q2_0.json     # 測るだけ。専用エンジ�
 ので較正値は採用した、という判断。`tools/calibrate.py` 自身も単発の測定が数 % 揺れることを知っていて、
 採用するかどうかは既定値と候補を**交互に 3 回ずつ**測り直して決めている。
 
+### 9.8 Q2_0 の設定スイープ（5.3 → 22.8 tok/s）
+
+ブラウザで会話すると **5.3 tok/s**、同じバイナリをベンチで測ると 18.7 tok/s、という差が出た。
+原因を潰すために Q2_0 のエンジン設定を総当たりした。全データは
+[bench/results/2026-10-03-q2_0-config-sweep/](../bench/results/2026-10-03-q2_0-config-sweep/README.md)。
+
+#### 症状（RAM の枯渇）
+
+expert の arena が 31.64 GiB、PLE の n-gram 表（28.8 GiB）を mmap すると合計 60.4 / 62 GiB。
+スワップは満杯（1.0 / 1.0 GiB）で、表のページは追い出され続ける。トークンごとに 16 行を読む必要が
+あり、そのすべてが major fault + スワップの押し合いになる。**約 190 ms/token**、つまり 5.3 tok/s。
+ベンチの 3 ラウンドは短いので表が RAM に残ったままなので、ベンチはこの問題も改善幅も**過小評価**していた。
+
+#### 効いた手
+
+| 設定 | 効果 |
+|---|---|
+| **`--ple-row-cache 16777216`** | **本命。** 読んだ n-gram 行をエンジン自身のキャッシュ（16M 行 × 90 B = 1.4 GiB）に保持。既定の 100 万行は 3.2 億行の 0.3% で、長い会話ではほぼ毎回 SSD 読み直しになっていた。コールド prompt で **18.7 → 28.0 tok/s（+50%）** |
+| `--ple-io mmap` | 表を mmap 経由で読む。`direct` より速い（25.0 vs 25.2 = ノイズ内だが、RAM 圧があるときは mmap が無難） |
+| `--ple-inflight 256` | 単体では +32%。ただし row cache を大きくすると redundant（C3 ≒ C2） |
+
+#### 効かなかった手
+
+| 設定 | 結果 |
+|---|---|
+| `--spec 6` | 28.5（`--spec 4` の 29.5 より遅い）。`--spec 4` で既に 56〜58/66 採用されており、窓を広くすると不採用ドラフトのコストを払うだけ |
+| `--pcie-frac 0.75` | 22.3。9.7 で決めた 0.55 が正しい |
+| `--kv q4_0` | 21.1。精度を落としつつ（[2026-09-27-kv-q4](../bench/results/2026-09-27-kv-q4/README.md)）、得られたスロット分の利得を失う |
+| `--kv-resident 20480` | **15.4。** 20K 位置分の KV をトークンごとに PCIe で流すのは、32K の int8 KV を VRAM に置くより遥かに遅い。1080 Ti では使うな |
+| `--expert-cache-per-layer` | エンジンが起動しない：`ExpertCache::verify_slot: slot 0 differs from the arena at byte 0`。MTP の draft head と併用不可 |
+| `--pool-workers 3` | 25.8（ノイズ内）。4 スレッドで token スレッドからコアを奪う |
+
+#### 実機確認（サーバーを止めずに）
+
+`./run-q2_0.sh` で起動し、無関係な ~1,400 token の prompt を 4 本投げた:
+
+| ラウンド | prompt tok/s | 出力 tok/s | expert ヒット |
+|---|---:|---:|---:|
+| 1（prefix 再利用） | 30.5 | 28.1 | 81.2% |
+| 2 | 333.5 | 19.5 | 65.0% |
+| 3 | 331.8 | 23.7 | 71.6% |
+| 4 | 155.8 | 19.9 | 80.6% |
+
+**平均 22.8 tok/s**（変更前 5.3）。コールドの 19〜24 はスイープの 28.0 より低いが、スイープの
+prompt は合成的で繰り返しが多く、実文書は触る n-gram 行の種類が多い。
+
+#### 50 tok/s が出ない理由（設定では埋まらない）
+
+デコードは **expert cache の 13.4% ミス率**に律速される。ミス 1 回 = CPU の AVX-2 で 1 行 + PCIe 転送。
+スロット数は 3,947（5.08 GiB）で、これは重み・draft head・681 MiB リザーブを引いた残り、VRAM 空きは
+513 MiB しかない。ルーティング全集 24,576 個を収めるには約 31 GiB 必要で、VRAM の話であり設定の話ではない。
+`docs/COMMUNITY_BENCHMARKS.md` の 50 tok/s は RTX 5090（32 GiB VRAM、PCIe Gen5、23 pool workers）の値。
+
+#### 測り直し方
+
+```bash
+python tools/speed_bench.py strata-q2_0-fast.json   # コールドとウォームを 1 回のエンジン起動で測る
+```
+
+#### 採用設定（`strata-q2_0-fast.json`）
+
+`--ple-row-cache 16777216`、`--ple-io mmap`、`--kv int8`、`--spec 4`、`--pcie-frac 0.55`、
+`--spec-min-p 0.70`、`--pool-workers 2`、`--vram-reserve-mib 681`、`--expert-cache auto`。
+
+**PLE 表は SSD 側に置く。** このマシンでは `/var/tmp` が Intel SSD（`rotational=0`）、`/home` が
+回転 HDD（`rotational=1`）なので、既定の `Strata-data/models/.../00002-of-00002.gguf`（HDD 上）ではなく
+`/var/tmp/strata-ple/` にコピーして参照している。トークンごとに 16 行を HDD から読むと致命的。
+
 ## 10. 設定を変えたいとき
 
 設定を変えたり別のモデルを入れるときは `--setup`（インストール済みでも再実行は安全、済んだステップはスキップ）:

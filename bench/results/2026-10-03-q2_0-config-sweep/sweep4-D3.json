@@ -1,0 +1,52 @@
+{
+ "name": "D3",
+ "extra": [
+  "--ple-row-cache",
+  "16777216",
+  "--ple-io",
+  "direct",
+  "--pool-workers",
+  "3"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 349.8,
+   "gen_tok": 128,
+   "gen_ms": 5122,
+   "gen_tps": 25.0,
+   "acc": "46/55",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 332.2,
+   "gen_tok": 128,
+   "gen_ms": 4606,
+   "gen_tps": 27.8,
+   "acc": "64/71",
+   "hit": 74.2
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 328.2,
+   "gen_tok": 128,
+   "gen_ms": 4287,
+   "gen_tps": 29.9,
+   "acc": "65/70",
+   "hit": 65.1
+  }
+ ],
+ "slots": [
+  "3641"
+ ],
+ "vram_free": [
+  "511"
+ ],
+ "mem": null,
+ "decode_mean": 27.6,
+ "decode_max": 29.9
+}

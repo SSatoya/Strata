@@ -1,0 +1,50 @@
+{
+ "name": "D1",
+ "extra": [
+  "--ple-row-cache",
+  "16777216",
+  "--pool-workers",
+  "3"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 349.5,
+   "gen_tok": 128,
+   "gen_ms": 5229,
+   "gen_tps": 24.5,
+   "acc": "46/55",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 332.0,
+   "gen_tok": 128,
+   "gen_ms": 4998,
+   "gen_tps": 25.6,
+   "acc": "64/71",
+   "hit": 74.2
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 325.7,
+   "gen_tok": 128,
+   "gen_ms": 4681,
+   "gen_tps": 27.3,
+   "acc": "65/70",
+   "hit": 65.1
+  }
+ ],
+ "slots": [
+  "3641"
+ ],
+ "vram_free": [
+  "511"
+ ],
+ "mem": null,
+ "decode_mean": 25.8,
+ "decode_max": 27.3
+}

@@ -1,0 +1,50 @@
+{
+ "name": "D2",
+ "extra": [
+  "--ple-row-cache",
+  "16777216",
+  "--ple-io",
+  "direct"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 349.6,
+   "gen_tok": 128,
+   "gen_ms": 5442,
+   "gen_tps": 23.5,
+   "acc": "46/55",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 332.3,
+   "gen_tok": 128,
+   "gen_ms": 5238,
+   "gen_tps": 24.4,
+   "acc": "64/71",
+   "hit": 74.2
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 326.4,
+   "gen_tok": 128,
+   "gen_ms": 4737,
+   "gen_tps": 27.0,
+   "acc": "65/70",
+   "hit": 65.1
+  }
+ ],
+ "slots": [
+  "3641"
+ ],
+ "vram_free": [
+  "511"
+ ],
+ "mem": null,
+ "decode_mean": 25.0,
+ "decode_max": 27.0
+}

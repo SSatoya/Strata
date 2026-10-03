@@ -1,0 +1,58 @@
+nohup: 入力を無視します
+[C0] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf
+[C0] up in 210 s
+[C0] round 1 wall 29.9 s
+[C0] round 2 wall 26.2 s
+[C0] round 3 wall 19.7 s
+[C0] slots ['3947'] vram free ['513'] mem None
+[C0]   gen  128 tok   17.3 tok/s (prompt   186.2, reused 0, hit None, acc 58/76)
+[C0]   gen  128 tok   17.8 tok/s (prompt   132.6, reused 0, hit 71.4, acc 61/74)
+[C0]   gen  128 tok   21.0 tok/s (prompt   137.0, reused 0, hit 67.3, acc 74/89)
+[C0] DECODE mean 18.7 tok/s  max 21.0
+[C1] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --ple-inflight 256
+[C1] up in 200 s
+[C1] round 1 wall 16.9 s
+[C1] round 2 wall 13.2 s
+[C1] round 3 wall 11.4 s
+[C1] slots ['3947'] vram free ['513'] mem None
+[C1]   gen  128 tok   27.5 tok/s (prompt   341.7, reused 0, hit None, acc 59/71)
+[C1]   gen  128 tok   23.5 tok/s (prompt   324.9, reused 0, hit 71.5, acc 57/65)
+[C1]   gen  128 tok   22.9 tok/s (prompt   322.6, reused 0, hit 66.3, acc 60/69)
+[C1] DECODE mean 24.6 tok/s  max 27.5
+[C2] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --ple-row-cache 16777216
+[C2] up in 205 s
+[C2] round 1 wall 16.7 s
+[C2] round 2 wall 12.2 s
+[C2] round 3 wall 10.0 s
+[C2] slots ['3947'] vram free ['513'] mem None
+[C2]   gen  128 tok   27.0 tok/s (prompt   351.7, reused 0, hit None, acc 59/71)
+[C2]   gen  128 tok   27.3 tok/s (prompt   335.3, reused 0, hit 71.5, acc 57/65)
+[C2]   gen  128 tok   29.6 tok/s (prompt   327.9, reused 0, hit 66.3, acc 60/69)
+[C2] DECODE mean 28.0 tok/s  max 29.6
+[C3] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --ple-inflight 256 --ple-row-cache 16777216
+[C3] up in 195 s
+[C3] round 1 wall 16.6 s
+[C3] round 2 wall 12.2 s
+[C3] round 3 wall 10.0 s
+[C3] slots ['3947'] vram free ['513'] mem None
+[C3]   gen  128 tok   27.7 tok/s (prompt   350.6, reused 0, hit None, acc 59/71)
+[C3]   gen  128 tok   27.4 tok/s (prompt   334.2, reused 0, hit 71.5, acc 57/65)
+[C3]   gen  128 tok   29.3 tok/s (prompt   329.5, reused 0, hit 66.3, acc 60/69)
+[C3] DECODE mean 28.1 tok/s  max 29.3
+[C4] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --kv q4_0
+[C4] up in 200 s
+[C4] round 1 wall 17.7 s
+[C4] round 2 wall 13.7 s
+[C4] round 3 wall 12.0 s
+[C4] slots ['4094'] vram free ['513'] mem None
+[C4]   gen  128 tok   22.4 tok/s (prompt   348.5, reused 0, hit None, acc 64/74)
+[C4]   gen  128 tok   20.6 tok/s (prompt   334.9, reused 0, hit 72.2, acc 69/87)
+[C4]   gen  128 tok   20.3 tok/s (prompt   325.8, reused 0, hit 70.2, acc 62/72)
+[C4] DECODE mean 21.1 tok/s  max 22.4
+
+=== SUMMARY (cold prompts) ===
+C0                                      mean 18.7  max 21.0
+C1   --ple-inflight 256                 mean 24.6  max 27.5
+C2   --ple-row-cache 16777216           mean 28.0  max 29.6
+C3   --ple-inflight 256 --ple-row-cache 16777216 mean 28.1  max 29.3
+C4   --kv q4_0                          mean 21.1  max 22.4

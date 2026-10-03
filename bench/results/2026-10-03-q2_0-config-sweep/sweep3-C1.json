@@ -1,0 +1,48 @@
+{
+ "name": "C1",
+ "extra": [
+  "--ple-inflight",
+  "256"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 341.7,
+   "gen_tok": 128,
+   "gen_ms": 4650,
+   "gen_tps": 27.5,
+   "acc": "59/71",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 324.9,
+   "gen_tok": 128,
+   "gen_ms": 5451,
+   "gen_tps": 23.5,
+   "acc": "57/65",
+   "hit": 71.5
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 322.6,
+   "gen_tok": 128,
+   "gen_ms": 5598,
+   "gen_tps": 22.9,
+   "acc": "60/69",
+   "hit": 66.3
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 24.6,
+ "decode_max": 27.5
+}

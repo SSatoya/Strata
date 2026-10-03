@@ -1,0 +1,48 @@
+{
+ "name": "C2",
+ "extra": [
+  "--ple-row-cache",
+  "16777216"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 4168,
+   "reused": 0,
+   "prompt_tps": 351.7,
+   "gen_tok": 128,
+   "gen_ms": 4749,
+   "gen_tps": 27.0,
+   "acc": "59/71",
+   "hit": null
+  },
+  {
+   "prompt_tok": 2512,
+   "reused": 0,
+   "prompt_tps": 335.3,
+   "gen_tok": 128,
+   "gen_ms": 4693,
+   "gen_tps": 27.3,
+   "acc": "57/65",
+   "hit": 71.5
+  },
+  {
+   "prompt_tok": 1866,
+   "reused": 0,
+   "prompt_tps": 327.9,
+   "gen_tok": 128,
+   "gen_ms": 4321,
+   "gen_tps": 29.6,
+   "acc": "60/69",
+   "hit": 66.3
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null,
+ "decode_mean": 28.0,
+ "decode_max": 29.6
+}
