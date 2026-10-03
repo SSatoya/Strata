@@ -1,0 +1,84 @@
+{
+ "name": "A2",
+ "args": [
+  "--pack",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0",
+  "--native",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+  "--ple-gguf",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf",
+  "--expert-profile",
+  "/home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin",
+  "--expert-cache",
+  "auto",
+  "--prefill",
+  "auto",
+  "--spec",
+  "4",
+  "--mtp",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt",
+  "--max-context",
+  "32768",
+  "--kv",
+  "int8",
+  "--pcie-frac",
+  "0.55",
+  "--spec-min-p",
+  "0.70",
+  "--pool-workers",
+  "2",
+  "--ple-io",
+  "mmap",
+  "--vram-reserve-mib",
+  "681"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 1483,
+   "reused": 0,
+   "prompt_tps": 329.9,
+   "gen_tok": 128,
+   "gen_ms": 4431,
+   "gen_tps": 28.9,
+   "acc": "57/66",
+   "hit": null
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1478,
+   "prompt_tps": 38.0,
+   "gen_tok": 48,
+   "gen_ms": 1541,
+   "gen_tps": 31.2,
+   "acc": "26/29",
+   "hit": 75.1
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1496,
+   "prompt_tps": 50.3,
+   "gen_tok": 128,
+   "gen_ms": 3780,
+   "gen_tps": 33.9,
+   "acc": "64/73",
+   "hit": 79.6
+  },
+  {
+   "prompt_tok": 1519,
+   "reused": 1496,
+   "prompt_tps": 38.4,
+   "gen_tok": 48,
+   "gen_ms": 1415,
+   "gen_tps": 33.9,
+   "acc": "23/27",
+   "hit": 85.3
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null
+}
