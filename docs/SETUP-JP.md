@@ -13,7 +13,7 @@ GTX 10 シリーズ（Pascal）で実際にインストール・起動・LAN 公
 | CUDA Toolkit | 12.6（`/usr/local/cuda-12.6`、nvcc 12.6.68） |
 | メモリ | 62 GB |
 | ディスク | /home に 1.8 TB（IQ3_XXS 一式で約 79 GB。IQ2_XS を足すと 118 GB、Q2_0 を足すと約 180 GB） |
-| Strata engine | 0.1.31、ローカルビルド（`archs: [61]`、`sm60: true`、`vision: "cpu"`） |
+| Strata engine | 0.1.33、ローカルビルド（`archs: [61]`、`sm60: true`、`vision: "cpu"`） |
 | モデル | Qwen3.8-Flash-Next / **Q2_0**（IQ3_XXS → IQ2_XS → Q2_0 と載せ替えた）、context 32768、vision cpu |
 
 ## 2. 前提条件
@@ -94,8 +94,10 @@ Workspace/
 │   ├── engine/strata-vision    # 画像エンコーダ（vision を有効にしたとき増える）
 │   ├── engine/BUILD.json       # どの構成でビルドしたかの記録
 │   ├── build/CMakeCache.txt    # STRATA_EXPERIMENTAL_SM60:BOOL=ON が入る
-│   ├── strata-q2_0.json        # 起動設定（いま動いているもの。gitignore 済み）
+│   ├── strata-q2_0-fast.json   # 起動設定（いま動いているもの。gitignore 済み）
 │   ├── run-q2_0.sh             # 起動スクリプト（gitignore 済み）
+│   ├── strata-q2_0-vision.json # 上の設定に `--vision` を足したもの（画像入力あり、9.9 節）
+│   ├── run-q2_0-vision.sh      # 同上の起動スクリプト
 │   ├── strata-q2_0.log         # エンジンのログ（毎リクエストの tok/s、cache hit rate が出る）
 │   ├── strata-iq2_xs.json / run-iq2_xs.sh / strata-iq2_xs.log   # 途中まで使っていた IQ2_XS
 │   └── strata-iq3_xxs.json / run-iq3_xxs.sh / strata-iq3_xxs.log   # 先に入れておいた IQ3_XXS
@@ -115,12 +117,12 @@ Workspace/
 ```json
 {
   "source": "local",
-  "version": "0.1.31",
+  "version": "0.1.33",
   "archs": [61],
   "vision": "cpu",
   "cuda_dirs": ["/usr/local/cuda-12.6/bin", "/usr/local/cuda-12.6/lib64"],
-  "src": "260e57c13c78d103",
-  "vision_src": "4b80385716918cce",
+  "src": "bd5219cbd261b225",
+  "vision_src": "4d89409b228a1daa",
   "sm60": true
 }
 ```
@@ -132,6 +134,7 @@ Workspace/
 
 ```bash
 ./run-q2_0.sh             # 起動（約 34 GB の expert を RAM に読む）
+./run-q2_0-vision.sh      # 同上 + 画像入力（`--vision`。速度は 9.9 節で実測）
 ./run-iq2_xs.sh           # 前に使っていた IQ2_XS 版（約 36 GB）
 ./run-iq3_xxs.sh          # 先に入れておいた IQ3_XXS 版（約 47 GB）
 ./setup.sh                # どれを起動するかの一覧が出る（既定は最後に作った方）
@@ -270,13 +273,20 @@ c = OpenAI(base_url="http://192.168.75.24:8080/v1", api_key="<鍵>")
 - `--vision gpu`（`yes` と同義）: エンコーダを GPU で。1 画像あたり最大 **1024** image tokens、
   VRAM に約 1.2 GB の空きが必要で、エンジン側は `--vram-reserve-mib 700` を予約する。
   GTX 1080 Ti の 11 GB は expert と重みで埋まっていて空きが 0.5 GB しかないため、このマシンでは選ばない。
-- `--vision cpu`: CPU でエンコード。1 画像あたり最大 **300** image tokens、スレッド 2（4 スレッドの PC ため）。
+  **expert cache のスロットが減るので速度も下がる**（9.9 節）。
+- `--vision cpu`: CPU でエンコード。既定は 1 画像あたり最大 **300** image tokens、スレッド 2（4 スレッドの PC ため）。
   Pascal 向けの CUDA エンコーダは上流で未検証なので、こちらが安全。
+  エンコーダは VRAM を 1 バイトも使わないので、**expert cache のスロットは減らない**（9.9 節で実測）。
 - 増えるもの: `engine/strata-vision`（7.6 MB。CPU ビルドなら数分でコンパイル）、
   `../Strata-data/models/mmproj-Qwen3.8-Flash-Next-BF16.gguf`（0.91 GB）。
   **本体エンジンの再ビルドは不要**（`engine/BUILD.json` の `vision` が `cpu` になるだけ）。
+  0.1.33 ではこのエンコーダが GPU ツールチェーン無しでビルドできるものになった（#411 #412）。
 - config に増えるキー: エンジン args の `--vision --vram-reserve-mib 700` と、`"vision"` ブロック
   （`exe` / `mmproj` / `model` / `gpu: false` / `max_tokens: 300` / `threads: 2`）。
+  `--model` には**テキストモデルの 1 分割目**を入れる（エンコーダは語彙だけ必要で、重みは読まない）。
+  `--vram-reserve-mib 700` は `setup.py` が **gpu/cpu 問わず**付ける値で、これは GPU エンコーダの分の予約。
+  `gpu: false` なら予約は不要なので、自分で config を書く場合は 9.8 節で調整した **681** を残したほうが
+  expert スロット 19 個ぶん得をする（9.9 節）。
 - 使い方:
   - ブラウザのチャット画面に画像を添付
   - `chat.py` で `/image <path>`
@@ -308,6 +318,25 @@ reasoning 側にも `It has red circle on left, blue square on right, background
 - 1 枚目の 28.6 s のうち数秒が CPU エンコード。同じ画像を毎ターン送る分は 2 回目以降消える。
 - `max_tokens` を小さくしすぎると思考（`reasoning_content`）だけで使い切られ、`content` が `null` になる。
   画像の要約でも 300〜500 は欲しい。
+
+### 8.2 画像入力の疎通確認（スクリプト）
+
+サーバーを起動したまま、1 枚の PNG を投げて返答を見る:
+
+```bash
+.venv/bin/python tools/vision_smoke.py            # 64x64 の赤い四角を生成して送る
+```
+
+```
+health: images=True
+answer: 'Red'
+usage: prompt=77 completion=41
+PASS
+```
+
+`/health` の `images` が `true`、`/v1/models` の `input_modalities` が `["text", "image"]` に変わっていれば
+有効になっている。`max_tokens` を 32 にすると `content: null`（`reasoning_content` には
+`Image shows red square` と出ている）になるので、疎通確認では 128 以上を渡す。
 
 ## 9. 出力を速くする
 
@@ -622,6 +651,35 @@ python tools/speed_bench.py strata-q2_0-fast.json   # コールドとウォー�
 回転 HDD（`rotational=1`）なので、既定の `Strata-data/models/.../00002-of-00002.gguf`（HDD 上）ではなく
 `/var/tmp/strata-ple/` にコピーして参照している。トークンごとに 16 行を HDD から読むと致命的。
 
+### 9.9 0.1.33 に追従し、画像入力を戻した（`--vision cpu` は無料だった）
+
+engine を 0.1.31 → 0.1.33 に更新し（`a1eb951`、 portable image encoder #411 #412 など）、
+上の採用設定のまま `--vision` を足して測り直した。実測は
+[bench/results/2026-10-04-vision-catchup/README.md](../bench/results/2026-10-04-vision-catchup/README.md)。
+
+**結論: `--vision cpu` は VRAM を使わないので、画像入力を戻しても速度はほぼ変わらない。**
+エンジン側で増えるのは mrope の位置テーブル（context 32768 で `cells * 3` int32 ≒ **0.4 MiB**）だけ。
+エンコーダは別プロセス（`engine/strata-vision`）で、`gpu: false` では VRAM を確保しない。
+
+`tools/sweep_bench.py` 3 回 ×（128, 48）token、順序を入れ替えた 2 組で A/B:
+
+| 構成 | expert cache slots | vram free | DECODE mean |
+|---|---:|---:|---:|
+| 画像なし（`strata-q2_0-fast.json`） | 3,947 | 513 MiB | 32.6 / 31.9 → **32.25** |
+| `--vision`（`strata-q2_0-vision.json`） | 3,947 | 513 MiB | 31.3 / 30.9 → **31.1** |
+
+スロット数も VRAM 空きも**完全に同一**。差は **-3.6%**（このマシンのノイズ幅 1% よりは大きいが、
+5% には収まる）。原因として有力なのは、エンコーダの CPU スレッド 2 本がトークンスレッドと
+pool workers 2 本と 4 コアで取り合うこと。気になるなら `vision.threads` を 1 にする（未測）。
+
+9.6 節で「vision を消すと 3.1x 速い」と書いたのは **GPU エンコーダ**の話で、`--vision cpu` には当てはまらない。
+`--vision gpu` は今も expert cache を削るので選ばない。
+
+```bash
+./run-q2_0-vision.sh      # 画像入力あり（推奨。上の -3.6%）
+./run-q2_0.sh             # 画像入力なし（9.8 節の最速設定のまま）
+```
+
 ## 10. 設定を変えたいとき
 
 設定を変えたり別のモデルを入れるときは `--setup`（インストール済みでも再実行は安全、済んだステップはスキップ）:
@@ -641,7 +699,7 @@ python tools/speed_bench.py strata-q2_0-fast.json   # コールドとウォー�
 | `--model Q2_0\|IQ2_XS\|IQ3_XXS\|IQ3_S\|IQ1_M` | サイズ |
 | `--context 32768` | 8192 / 32768 / 65536 / 131072 / 262144 / 393216 / 524288 |
 | `--rope-scaling none\|linear\|yarn` `--rope-scale F` | 学習済み 262144 を超える context の延長 |
-| `--vision yes\|no\|gpu\|cpu` | 画像入力（`yes` = `gpu`。このマシンでは VRAM が足りず `cpu`、8 節） |
+| `--vision yes\|no\|gpu\|cpu` | 画像入力（`yes` = `gpu`。このマシンでは VRAM を削るので `cpu`、8 節 / 9.9 節） |
 | `--port 8080` | サーバーのポート |
 | `--host 0.0.0.0 --api-key KEY` | LAN 越しアクセス（6 節） |
 | `--data-dir DIR` | モデルファイルの置き場所（既定はリポジトリ隣の `Strata-data`、約 70〜120 GB） |

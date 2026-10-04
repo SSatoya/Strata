@@ -1,0 +1,14 @@
+[V4-baseline-rev] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --ple-row-cache 16777216 --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf
+[V4-baseline-rev] up in 240 s
+[V4-baseline-rev] round 1 wall 11.1 s
+[V4-baseline-rev] round 2 wall 5.8 s
+[V4-baseline-rev] round 3 wall 6.0 s
+[V4-baseline-rev] expert cache slots: ['3947'] | vram free: ['513']
+[V4-baseline-rev] memory: None
+[V4-baseline-rev]   gen  128 tok   28.1 tok/s (prompt   329.5, hit None, acc 57/66)
+[V4-baseline-rev]   gen   48 tok   33.6 tok/s (prompt    38.4, hit 75.1, acc 26/29)
+[V4-baseline-rev]   gen  128 tok   34.4 tok/s (prompt    50.9, hit 79.7, acc 64/75)
+[V4-baseline-rev]   gen   48 tok   35.9 tok/s (prompt    39.3, hit 85.1, acc 24/25)
+[V4-baseline-rev]   gen  128 tok   33.3 tok/s (prompt    48.2, hit 87.1, acc 61/72)
+[V4-baseline-rev]   gen   48 tok   35.5 tok/s (prompt    37.3, hit 83.5, acc 23/26)
+[V4-baseline-rev] DECODE mean 31.9 tok/s  max 34.4

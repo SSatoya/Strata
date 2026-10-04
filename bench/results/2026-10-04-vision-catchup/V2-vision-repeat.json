@@ -1,0 +1,111 @@
+{
+ "name": "V2-vision-repeat",
+ "args": [
+  "--pack",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0",
+  "--native",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+  "--ple-gguf",
+  "/var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf",
+  "--expert-profile",
+  "/home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin",
+  "--expert-cache",
+  "auto",
+  "--prefill",
+  "auto",
+  "--spec",
+  "4",
+  "--mtp",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt",
+  "--max-context",
+  "32768",
+  "--kv",
+  "int8",
+  "--pcie-frac",
+  "0.55",
+  "--spec-min-p",
+  "0.70",
+  "--pool-workers",
+  "2",
+  "--ple-io",
+  "mmap",
+  "--ple-row-cache",
+  "16777216",
+  "--vram-reserve-mib",
+  "681",
+  "--native-dense-gguf",
+  "/home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf",
+  "--native-dense-gguf",
+  "/var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf",
+  "--vision"
+ ],
+ "rows": [
+  {
+   "prompt_tok": 1483,
+   "reused": 0,
+   "prompt_tps": 329.0,
+   "gen_tok": 128,
+   "gen_ms": 4816,
+   "gen_tps": 26.6,
+   "acc": "65/77",
+   "hit": null
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1478,
+   "prompt_tps": 38.1,
+   "gen_tok": 48,
+   "gen_ms": 1444,
+   "gen_tps": 33.2,
+   "acc": "26/31",
+   "hit": 73.4
+  },
+  {
+   "prompt_tok": 1501,
+   "reused": 1496,
+   "prompt_tps": 51.7,
+   "gen_tok": 128,
+   "gen_ms": 3781,
+   "gen_tps": 33.9,
+   "acc": "64/78",
+   "hit": 80.6
+  },
+  {
+   "prompt_tok": 1519,
+   "reused": 1496,
+   "prompt_tps": 39.6,
+   "gen_tok": 48,
+   "gen_ms": 1366,
+   "gen_tps": 35.1,
+   "acc": "25/26",
+   "hit": 85.3
+  },
+  {
+   "prompt_tok": 1519,
+   "reused": 1514,
+   "prompt_tps": 47.8,
+   "gen_tok": 128,
+   "gen_ms": 3818,
+   "gen_tps": 33.5,
+   "acc": "57/67",
+   "hit": 87.2
+  },
+  {
+   "prompt_tok": 1537,
+   "reused": 1514,
+   "prompt_tps": 36.7,
+   "gen_tok": 48,
+   "gen_ms": 1450,
+   "gen_tps": 33.1,
+   "acc": "22/28",
+   "hit": 84.6
+  }
+ ],
+ "slots": [
+  "3947"
+ ],
+ "vram_free": [
+  "513"
+ ],
+ "mem": null
+}

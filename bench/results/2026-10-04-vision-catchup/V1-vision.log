@@ -1,0 +1,15 @@
+nohup: 入力を無視します
+[V1-vision] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --ple-row-cache 16777216 --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --vision
+[V1-vision] up in 240 s
+[V1-vision] round 1 wall 14.7 s
+[V1-vision] round 2 wall 6.6 s
+[V1-vision] round 3 wall 7.4 s
+[V1-vision] expert cache slots: ['3947'] | vram free: ['513']
+[V1-vision] memory: None
+[V1-vision]   gen  128 tok   21.1 tok/s (prompt   238.7, hit None, acc 65/80)
+[V1-vision]   gen   48 tok   29.1 tok/s (prompt    30.8, hit 74.6, acc 26/29)
+[V1-vision]   gen  128 tok   29.8 tok/s (prompt    47.3, hit 80.0, acc 64/78)
+[V1-vision]   gen   48 tok   31.6 tok/s (prompt    37.5, hit 85.0, acc 23/27)
+[V1-vision]   gen  128 tok   24.7 tok/s (prompt    47.1, hit 86.5, acc 56/66)
+[V1-vision]   gen   48 tok   33.1 tok/s (prompt    35.6, hit 84.1, acc 23/26)
+[V1-vision] DECODE mean 25.2 tok/s  max 29.8

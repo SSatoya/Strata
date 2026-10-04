@@ -1,0 +1,14 @@
+[V5-vision-rev] args: --pack /home/users/satoya_sugimoto/Workspace/Strata-data/packs/q2_0 --native /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --ple-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --expert-profile /home/users/satoya_sugimoto/Workspace/Strata/data/expert-profile.bin --expert-cache auto --prefill auto --spec 4 --mtp /home/users/satoya_sugimoto/Workspace/Strata-data/mtp/rt --max-context 32768 --kv int8 --pcie-frac 0.55 --spec-min-p 0.70 --pool-workers 2 --ple-io mmap --ple-row-cache 16777216 --vram-reserve-mib 681 --native-dense-gguf /home/users/satoya_sugimoto/Workspace/Strata-data/models/Q2_0/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00001-of-00002.gguf --native-dense-gguf /var/tmp/strata-ple/Qwen3.8-Flash-Next-GSQ-RCO-Q2_0-00002-of-00002.gguf --vision
+[V5-vision-rev] up in 205 s
+[V5-vision-rev] round 1 wall 10.9 s
+[V5-vision-rev] round 2 wall 5.8 s
+[V5-vision-rev] round 3 wall 7.0 s
+[V5-vision-rev] expert cache slots: ['3947'] | vram free: ['513']
+[V5-vision-rev] memory: None
+[V5-vision-rev]   gen  128 tok   29.8 tok/s (prompt   329.4, hit None, acc 65/77)
+[V5-vision-rev]   gen   48 tok   33.1 tok/s (prompt    38.7, hit 73.4, acc 26/31)
+[V5-vision-rev]   gen  128 tok   34.1 tok/s (prompt    51.4, hit 80.6, acc 64/78)
+[V5-vision-rev]   gen   48 tok   35.6 tok/s (prompt    39.2, hit 85.3, acc 25/26)
+[V5-vision-rev]   gen  128 tok   28.9 tok/s (prompt    47.5, hit 87.2, acc 57/66)
+[V5-vision-rev]   gen   48 tok   30.0 tok/s (prompt    27.5, hit 84.5, acc 23/24)
+[V5-vision-rev] DECODE mean 30.9 tok/s  max 34.1
