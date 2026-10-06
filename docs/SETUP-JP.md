@@ -13,21 +13,21 @@ GTX 10 シリーズ（Pascal）で実際にインストール・起動・LAN 公
 | CUDA Toolkit | 12.6（`/usr/local/cuda-12.6`、nvcc 12.6.68） |
 | メモリ | 62 GB |
 | ディスク | /home に 1.8 TB（IQ3_XXS 一式で約 79 GB。IQ2_XS を足すと 118 GB、Q2_0 を足すと約 180 GB） |
-| Strata engine | 0.1.33、ローカルビルド（`archs: [61]`、`sm60: true`、`vision: "cpu"`） |
+| Strata engine | 0.1.33、ローカルビルド（`archs: [61]`、`toolkit: 12`、`vision: "cpu"`） |
 | モデル | Qwen3.8-Flash-Next / **Q2_0**（IQ3_XXS → IQ2_XS → Q2_0 と載せ替えた）、context 32768、vision cpu |
 
 ## 2. 前提条件
 
 - **GPU**
   - 公式サポートは **RTX 20 系以降（compute capability 7.5 以上、VRAM 8 GB 以上）**。
-  - GTX 10（Pascal `sm_60/sm_61`）と Volta（`sm_70`）は **`--experimental-sm60`** を付けたときだけ通る
-    コミュニティビルド。上流はサポートしない（#236）。
+  - GTX 10（Pascal `sm_60/sm_61`）と Volta（`sm_70`）は **CUDA 12 で作った実験エンジン**で動く（#236、#295）。
+    上流はサポートしない。詳しくは [docs/OLDER_GPUS.md](OLDER_GPUS.md)。
 - **ドライバ**
   - 通常構成（CUDA 13）: **580 以上**。
-  - `--experimental-sm60`: **525 以上**でよい（CUDA 12.0 以上があれば足りる。550.107.02 + CUDA 12.6 で動作確認済み）。
+  - CUDA 12 エンジン: **525 以上**でよい（CUDA 12.0 以上があれば足りる。550.107.02 + CUDA 12.6 で動作確認済み）。
 - **CUDA Toolkit**
   - Pascal / Volta には **CUDA 12.x が必須**。CUDA 13 の nvcc は `compute_60/61/70` を削除しているため、
-    SM60 ビルドは CUDA 13 では作れない。`setup.py` は SM60 のとき 12.6 を選ぶ（未インストールなら導入を案内する）。
+    CUDA 12 エンジンは CUDA 13 では作れない。古いカードがあれば `setup.py` は CUDA 12 を選ぶ（未インストールなら導入を案内する）。
 - **メモリ**: 下表の「必要 RAM」より小さいと setup が警告し、小さいサイズを勧める。`arena` は GPU に常駐させる
   expert の分で、この分がシステム RAM を圧迫する（IQ3_XXS では約 47 GB の expert を RAM に読み、サーバーが確保する
   RAM は約 40 GB だった）。
@@ -49,10 +49,10 @@ GTX 10 シリーズ（Pascal）で実際にインストール・起動・LAN 公
 git clone <このリポジトリ> && cd Strata
 
 # 対話で 4 問（モデル / サイズ / context / 画像）に答える
-./setup.sh --experimental-sm60
+./setup.sh --cuda 12
 
 # 既定値で進めるなら
-./setup.sh --experimental-sm60 --model IQ3_XXS --context 32768 --yes
+./setup.sh --cuda 12 --model IQ3_XXS --context 32768 --yes
 ```
 
 > このマシンで最終的に使っているのは **Q2_0** の方（`--model Q2_0 --kv int8 --vision cpu`）。
@@ -68,7 +68,7 @@ git clone <このリポジトリ> && cd Strata
 1. PC チェック（GPU・ドライバ・RAM・CPU・ディスク）
 2. 質問
 3. `.venv` に Python パッケージ（numpy、jinja2、NVIDIA CUDA ライブラリ等）
-4. エンジンの入手 — **RTX 20 以降はプリビルド版を使うが、`--experimental-sm60` では必ずローカルコンパイル**（10〜20 分）
+4. エンジンの入手 — **RTX 20 以降はプリビルド版（CUDA 13）を使う。CUDA 12 エンジンはこの PC でビルドする**（10〜20 分）。Windows には既製の CUDA 12 版（`strata-windows-x64-cuda12.zip`）もある
 5. Hugging Face からモデルの GGUF をダウンロード（再開可能）
 6. Strata 用にモデルを準備（pack）＋ MTP ドラフト層を取得（約 5 GB）
 7. `run-<model>.sh` を書いて起動
@@ -90,10 +90,10 @@ Compiling the Strata engine for your GPU (10-20 minutes, once) ...
 Workspace/
 ├── Strata/                     # リポジトリ
 │   ├── .venv/                  # Python 環境（cmake・ninja もここに入る）
-│   ├── engine/strata           # ビルドしたエンジン
-│   ├── engine/strata-vision    # 画像エンコーダ（vision を有効にしたとき増える）
-│   ├── engine/BUILD.json       # どの構成でビルドしたかの記録
-│   ├── build/CMakeCache.txt    # STRATA_EXPERIMENTAL_SM60:BOOL=ON が入る
+│   ├── engine-cuda12/strata    # ビルドしたエンジン（CUDA 12 エンジンはこのフォルダ）
+│   ├── engine-cuda12/strata-vision   # 画像エンコーダ（vision を有効にしたとき増える）
+│   ├── engine-cuda12/BUILD.json      # どの構成でビルドしたかの記録
+│   ├── build*/CMakeCache.txt   # STRATA_EXPERIMENTAL_SM60:BOOL=ON が入る
 │   ├── strata-q2_0-fast.json   # 起動設定（いま動いているもの。gitignore 済み）
 │   ├── run-q2_0.sh             # 起動スクリプト（gitignore 済み）
 │   ├── strata-q2_0-vision.json # 上の設定に `--vision` を足したもの（画像入力あり、9.9 節）
@@ -112,7 +112,7 @@ Workspace/
     └── mtp/                    # 6.5 GB MTP ドラフト層（サイズ間で共有、再ダウンロードなし）
 ```
 
-`engine/BUILD.json`（SM60 と vision の記録がここに残る）:
+`engine-cuda12/BUILD.json`（CUDA 12 と vision の記録がここに残る）:
 
 ```json
 {
@@ -120,14 +120,14 @@ Workspace/
   "version": "0.1.33",
   "archs": [61],
   "vision": "cpu",
+  "toolkit": 12,
   "cuda_dirs": ["/usr/local/cuda-12.6/bin", "/usr/local/cuda-12.6/lib64"],
   "src": "bd5219cbd261b225",
-  "vision_src": "4d89409b228a1daa",
-  "sm60": true
+  "vision_src": "4d89409b228a1daa"
 }
 ```
 
-**`"sm60": true` が重要**：これがあるおかげで、2 回目以降は `--experimental-sm60` を付けなくても
+**`"toolkit": 12` が重要**：これ（と `engine-cuda12/` にある exe）のおかげで、2 回目以降は `--cuda 12` を付けなくても
 （`./setup.sh` だけでも、`run-q2_0.sh` だけでも）同じビルドとして認識され、GPU チェックを通過する。
 
 ## 5. 起動・停止
@@ -709,21 +709,21 @@ pool workers 2 本と 4 コアで取り合うこと。気になるなら `vision
 | `--calibrate` | この PC に合わせてエンジン設定を調整（5〜10 分） |
 | `--low-ram auto\|on\|off\|resident\|mmap` | expert を RAM にコピーせずファイルから読む（GPU 大きく RAM 小さい PC 向け） |
 | `--draft-vocab cjk\|en` | ドラフト層の語彙（cjk が既定。en は VRAM を約 110 MiB 節約） |
-| `--experimental-sm60` | GTX 10 / Volta をコミュニティビルドで動かす（#236、上流は未サポート） |
+| `--cuda 12` | GTX 10 / Volta を CUDA 12 エンジンで動かす（#236、#295、上流は未サポート） |
 | `--experimental-speed-projection on\|off\|<GGUF>` | 実験的な速度投影（既定 off、挙動が変わる。先に DETAILS.md を読むこと） |
 | `--yes` | 推奨値で質問をスキップ |
 
-環境変数でも指定できる: `STRATA_EXPERIMENTAL_SM60=1`、`STRATA_API_KEY`、`STRATA_PREBUILT_URL`。
+環境変数でも指定できる: `STRATA_EXPERIMENTAL_SM60=1`（古いカードを許可）、`STRATA_CUDA=12`、`STRATA_NVCC=<nvcc>`、`STRATA_API_KEY`、`STRATA_PREBUILT_URL`。
 
 ## 11. はまったポイントと対処
 
 | 症状 | 原因 / 対処 |
 |---|---|
-| GPU が古いと弾かれて setup が止まる | 既定の下限は compute capability 7.5（RTX 20）。GTX 10 / Volta は `--experimental-sm60`（または `STRATA_EXPERIMENTAL_SM60=1`）で下限が 6.0 になる |
-| SM60 のビルドが CUDA 13 で失敗する | CUDA 13 の nvcc は `compute_60/61/70` を削除済み。`setup.py` は SM60 のとき CUDA **12.6** を選ぶので、未インストールなら導入してから再実行（Windows は CUDA 12.6 を手元に入れてから再実行） |
+| GPU が古いと弾かれて setup が止まる | 既定の既製エンジンは compute capability 7.5（RTX 20）以上。GTX 10 / Volta は `--cuda 12`（または `STRATA_EXPERIMENTAL_SM60=1`、あるいはそのカードを `--gpu N` で指定）で CUDA 12 エンジンが動く |
+| CUDA 12 エンジンのビルドが CUDA 13 で失敗する | CUDA 13 の nvcc は `compute_60/61/70` を削除済み。古いカードがあれば `setup.py` は CUDA **12.x**（12.0 以上、sm_120 なら 12.8 以上）を選ぶので、未インストールなら導入してから再実行（`STRATA_NVCC=<nvcc>` で 1 つのツールキットを指定できる） |
 | CMake の configure で失敗する | システムの `cmake 3.22` が `.venv` 内の `cmake 4.4.3` より優先されていた（**#236 で修正済み**：venv 内のツールを優先する）。修正前の版を使う場合は `PATH` を調整するか venv の cmake を先頭に |
-| プリビルドエンジンがダウンロードされない／合わない | SM60 ではプリビルド版を使わず**必ずローカルビルド**（10〜20 分）。`--build` を付ける必要はない |
-| 2 回目以降に `--experimental-sm60` を忘れた | `engine/BUILD.json` の `"sm60": true` を読んで判定するので、起動（`run-iq2_xs.sh` / `./setup.sh`）ではフラグ不要 |
+| プリビルドエンジンがダウンロードされない／合わない | Linux の CUDA 12 エンジンはこの PC でビルドする（10〜20 分）。Windows には既製の CUDA 12 版（`strata-windows-x64-cuda12.zip`）がある。`--build` を付ける必要はない |
+| 2 回目以降に `--cuda 12` を忘れた | 設定の exe が `engine-cuda12/` にある（`BUILD.json` の `"toolkit": 12`）ので、起動（`run-iq2_xs.sh` / `./setup.sh`）ではフラグ不要 |
 | 起動中に 1〜3 分応答がなくなる | expert を RAM に読む処理。正常なので待つ |
 | `WARNING: RAM is tight` | expert の arena が RAM を圧迫。小さいサイズ（`Q2_0` / `IQ2_XS`）を選ぶ、他プロセスを止める、`--low-ram` を検討する |
 | ダウンロードが途中で切れた | そのまま再実行すれば続きから（HF のリビジョンは固定ピン済み） |

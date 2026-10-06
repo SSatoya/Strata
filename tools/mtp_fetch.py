@@ -33,8 +33,11 @@ import urllib.request
 # header (#327): the fetch then needs that host to answer 206, but the SHA256 below no longer applies to it.
 PINNED_REVISION = "de4b8e4d43b917e7706784d8bb445c9af86a3540"
 REVISION = os.environ.get("STRATA_MTP_REVISION") or PINNED_REVISION
-REPO = os.environ.get("STRATA_MTP_REPO") or "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/%s/" % REVISION
-PINNED = "https://huggingface.co/Qwen/Qwen3.8-Flash-Next/resolve/%s/" % PINNED_REVISION   # SHA256's revision
+# #495: HF_ENDPOINT (a mirror, e.g. https://hf-mirror.com) serves the same revision; the SHA256 checks below still apply
+HF_ENDPOINT = (os.environ.get("HF_ENDPOINT") or "").strip().rstrip("/") or "https://huggingface.co"
+# STRATA_MTP_REPO names the whole fetch root (a mirror with its own layout, #327); it wins over HF_ENDPOINT
+REPO = os.environ.get("STRATA_MTP_REPO") or HF_ENDPOINT + "/Qwen/Qwen3.8-Flash-Next/resolve/%s/" % REVISION
+PINNED = HF_ENDPOINT + "/Qwen/Qwen3.8-Flash-Next/resolve/%s/" % PINNED_REVISION   # SHA256's revision
 DTYPE_BYTES = {"BF16": 2, "F16": 2, "F32": 4, "F8_E4M3": 1, "I64": 8, "I32": 4}
 BAD = 3                                             # `verify`'s exit code: a tensor is missing or corrupt
 
